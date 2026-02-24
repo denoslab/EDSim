@@ -281,8 +281,7 @@ Patient times in both area and state are also exported as separate CSV files alo
 EDsim builds on the **Generative Agents** framework by Park et al. (Stanford/Google):
 
 > Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. 2023. *Generative Agents: Interactive Simulacra of Human Behavior.* In Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST '23). ACM.
-
-The original architecture for believable agent behavior — memory streams, reflection, and planning — was adapted and extended to model emergency department operations.
+> 
 
 ## Citation
 
@@ -290,7 +289,7 @@ If you use EDsim in your research, please cite:
 
 ```bibtex
 @article{edsim2025,
-  title   = {EDsim: An LLM-Powered Emergency Department Simulation Using Generative Agents},
+  title   = {EDSim: An Agentic Simulator for Emergency Department Operations},
   author  = {TODO},
   journal = {TODO},
   year    = {TODO}

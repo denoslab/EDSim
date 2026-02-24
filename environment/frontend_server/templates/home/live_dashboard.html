@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .dash-card {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    padding: 18px 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .dash-card h4 { margin: 0 0 4px; font-size: 13px; color: #888; text-transform: uppercase; }
+  .dash-card .val { font-size: 28px; font-weight: 700; color: #333; }
+  .panel-chart { min-height: 280px; }
+  #status-banner {
+    text-align: center; padding: 30px; font-size: 18px; color: #888;
+  }
+  .stage-table { width: 100%; font-size: 13px; }
+  .stage-table th, .stage-table td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+  .stage-table th { background: #f5f5f5; }
+</style>
+
+<div class="container-fluid" style="max-width:1300px; margin-top:30px;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+    <h2 style="margin:0;">Live Simulation Dashboard</h2>
+    <a href="/simulator_home" class="btn btn-default">Back to Simulator</a>
+  </div>
+
+  <!-- Status banner shown before data is available -->
+  <div id="status-banner">Waiting for simulation data...</div>
+
+  <!-- Main content, hidden until data arrives -->
+  <div id="dashboard-content" style="display:none;">
+
+    <!-- Top row: 4 status cards -->
+    <div class="row" style="margin-bottom:18px;">
+      <div class="col-md-3"><div class="dash-card"><h4>Sim Time</h4><div class="val" id="card-time">--</div></div></div>
+      <div class="col-md-3"><div class="dash-card"><h4>Step</h4><div class="val" id="card-step">--</div></div></div>
+      <div class="col-md-3"><div class="dash-card"><h4>In ED Now</h4><div class="val" id="card-current">--</div></div></div>
+      <div class="col-md-3"><div class="dash-card"><h4>Completed</h4><div class="val" id="card-completed">--</div></div></div>
+    </div>
+
+    <!-- Middle row: Patient States + Zone Occupancy -->
+    <div class="row" style="margin-bottom:18px;">
+      <div class="col-md-7">
+        <div class="panel panel-default">
+          <div class="panel-heading"><strong>Patient State Distribution</strong></div>
+          <div class="panel-body panel-chart"><canvas id="chartStates"></canvas></div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="panel panel-default">
+          <div class="panel-heading"><strong>Zone Occupancy</strong></div>
+          <div class="panel-body panel-chart"><canvas id="chartZones"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Third row: Queues + Nurse Utilization + Doctor Load -->
+    <div class="row" style="margin-bottom:18px;">
+      <div class="col-md-4">
+        <div class="panel panel-default">
+          <div class="panel-heading"><strong>Queue Sizes</strong></div>
+          <div class="panel-body panel-chart"><canvas id="chartQueues"></canvas></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="panel panel-default">
+          <div class="panel-heading"><strong>Nurse Utilization</strong></div>
+          <div class="panel-body panel-chart"><canvas id="chartNurses"></canvas></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="panel panel-default">
+          <div class="panel-heading"><strong>Doctor Load</strong></div>
+          <div class="panel-body panel-chart"><canvas id="chartDoctors"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom row: Completed Patient Stage Times -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default">
+          <div class="panel-heading"><strong>Completed Patient Stage Times (minutes)</strong></div>
+          <div class="panel-body" style="max-height:350px; overflow-y:auto;">
+            <table class="stage-table" id="stage-table">
+              <thead><tr id="stage-header"></tr></thead>
+              <tbody id="stage-body"></tbody>
+            </table>
+            <div id="no-stages" style="text-align:center; color:#999; padding:20px;">No completed patients yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="padding-bottom:5em;"></div>
+
+<script>
+(function() {
+  // Color palette
+  const COLORS = [
+    '#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f',
+    '#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac',
+    '#6baed6','#fd8d3c'
+  ];
+
+  // Chart instances
+  let chartStates = null, chartZones = null, chartQueues = null,
+      chartNurses = null, chartDoctors = null;
+
+  // Readable labels for patient states
+  const STATE_ORDER = [
+    'WAITING_FOR_TRIAGE','TRIAGE','WAITING_FOR_NURSE',
+    'WAITING_FOR_FIRST_ASSESSMENT','WAITING_FOR_TEST','GOING_FOR_TEST',
+    'WAITING_FOR_RESULT','WAITING_FOR_DOCTOR','WAITING_FOR_EXIT',
+    'ADMITTED_BOARDING','DISCHARGED_WAITING','LEAVING'
+  ];
+
+  function shortLabel(s) {
+    return s.replace(/WAITING_FOR_/g,'Wait ').replace(/_/g,' ').replace('GOING FOR ','Going ');
+  }
+
+  function makeOrUpdate(canvasId, existing, cfg, updater) {
+    if (!existing) {
+      return new Chart(document.getElementById(canvasId), cfg);
+    }
+    updater(existing);
+    existing.update();
+    return existing;
+  }
+
+  function refresh() {
+    fetch('/api/live_dashboard/?include_stages=true')
+      .then(r => {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(d => {
+        document.getElementById('status-banner').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
+
+        // Cards
+        document.getElementById('card-time').textContent = d.sim_time || '--';
+        document.getElementById('card-step').textContent = d.step != null ? d.step : '--';
+        document.getElementById('card-current').textContent = d.current_patients != null ? d.current_patients : '--';
+        document.getElementById('card-completed').textContent = d.completed != null ? d.completed : '--';
+
+        // --- Patient States bar chart ---
+        var stateLabels = [], stateCounts = [];
+        STATE_ORDER.forEach(function(s) {
+          var c = (d.patient_states || {})[s];
+          if (c && c > 0) { stateLabels.push(shortLabel(s)); stateCounts.push(c); }
+        });
+        // include any unknown states
+        Object.keys(d.patient_states || {}).forEach(function(s) {
+          if (STATE_ORDER.indexOf(s) === -1 && d.patient_states[s] > 0) {
+            stateLabels.push(shortLabel(s)); stateCounts.push(d.patient_states[s]);
+          }
+        });
+        if (!chartStates) {
+          chartStates = new Chart(document.getElementById('chartStates'), {
+            type: 'bar',
+            data: { labels: stateLabels, datasets: [{ label: 'Patients', data: stateCounts, backgroundColor: COLORS }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+          });
+        } else {
+          chartStates.data.labels = stateLabels;
+          chartStates.data.datasets[0].data = stateCounts;
+          chartStates.update();
+        }
+
+        // --- Zone Occupancy horizontal bar ---
+        var zoneLabels = [], zoneCur = [], zoneCap = [];
+        Object.keys(d.zone_occupancy || {}).forEach(function(z) {
+          zoneLabels.push(z);
+          zoneCur.push(d.zone_occupancy[z].current);
+          zoneCap.push(d.zone_occupancy[z].capacity);
+        });
+        if (!chartZones) {
+          chartZones = new Chart(document.getElementById('chartZones'), {
+            type: 'bar',
+            data: {
+              labels: zoneLabels,
+              datasets: [
+                { label: 'Occupied', data: zoneCur, backgroundColor: '#4e79a7' },
+                { label: 'Capacity', data: zoneCap, backgroundColor: '#ddd' }
+              ]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, stacked: false } }, plugins: { legend: { position: 'bottom' } } }
+          });
+        } else {
+          chartZones.data.labels = zoneLabels;
+          chartZones.data.datasets[0].data = zoneCur;
+          chartZones.data.datasets[1].data = zoneCap;
+          chartZones.update();
+        }
+
+        // --- Queue Sizes bar chart ---
+        var qLabels = ['Triage','Bedside Nurse','Pager (CTAS 1)','Doctor Global'];
+        var qData = [d.queues.triage, d.queues.bedside_nurse_waiting, d.queues.pager, d.queues.doctor_global];
+        if (!chartQueues) {
+          chartQueues = new Chart(document.getElementById('chartQueues'), {
+            type: 'bar',
+            data: { labels: qLabels, datasets: [{ label: 'Waiting', data: qData, backgroundColor: ['#f28e2b','#e15759','#76b7b2','#59a14f'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+          });
+        } else {
+          chartQueues.data.datasets[0].data = qData;
+          chartQueues.update();
+        }
+
+        // --- Nurse Utilization doughnut ---
+        var nLabels = [], nData = [], nColors = ['#59a14f','#4e79a7','#f28e2b','#edc948','#bab0ac'];
+        var ni = 0;
+        Object.keys(d.nurse_status || {}).forEach(function(k) {
+          if (d.nurse_status[k] > 0) {
+            nLabels.push(k); nData.push(d.nurse_status[k]);
+          }
+          ni++;
+        });
+        if (!chartNurses) {
+          chartNurses = new Chart(document.getElementById('chartNurses'), {
+            type: 'doughnut',
+            data: { labels: nLabels, datasets: [{ data: nData, backgroundColor: nColors }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+          });
+        } else {
+          chartNurses.data.labels = nLabels;
+          chartNurses.data.datasets[0].data = nData;
+          chartNurses.update();
+        }
+
+        // --- Doctor Load horizontal bar ---
+        var dLabels = [], dData = [];
+        var maxP = d.doctor_max_patients || 5;
+        Object.keys(d.doctor_assigned || {}).sort().forEach(function(k) {
+          dLabels.push(k); dData.push(d.doctor_assigned[k]);
+        });
+        if (!chartDoctors) {
+          chartDoctors = new Chart(document.getElementById('chartDoctors'), {
+            type: 'bar',
+            data: { labels: dLabels, datasets: [{ label: 'Assigned', data: dData, backgroundColor: '#4e79a7' }] },
+            options: {
+              indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+              scales: { x: { beginAtZero: true, max: maxP, ticks: { stepSize: 1 } } },
+              plugins: { legend: { display: false } }
+            }
+          });
+        } else {
+          chartDoctors.data.labels = dLabels;
+          chartDoctors.data.datasets[0].data = dData;
+          chartDoctors.options.scales.x.max = maxP;
+          chartDoctors.update();
+        }
+
+        // --- Completed Patient Stage Times table ---
+        var stages = d.completed_stages || [];
+        var tbody = document.getElementById('stage-body');
+        var thead = document.getElementById('stage-header');
+        var noStages = document.getElementById('no-stages');
+        if (stages.length === 0) {
+          noStages.style.display = 'block';
+          tbody.innerHTML = '';
+          thead.innerHTML = '';
+        } else {
+          noStages.style.display = 'none';
+          var cols = Object.keys(stages[0]);
+          thead.innerHTML = cols.map(function(c) { return '<th>' + c + '</th>'; }).join('');
+          tbody.innerHTML = stages.map(function(row) {
+            return '<tr>' + cols.map(function(c) {
+              var v = row[c];
+              var num = parseFloat(v);
+              return '<td>' + (isNaN(num) ? v : num.toFixed(1)) + '</td>';
+            }).join('') + '</tr>';
+          }).join('');
+        }
+      })
+      .catch(function() {
+        // Keep showing "waiting" banner on error
+        document.getElementById('status-banner').style.display = 'block';
+      });
+  }
+
+  // Initial fetch, then poll every 5 seconds
+  refresh();
+  setInterval(refresh, 5000);
+})();
+</script>
+{% endblock content %}

@@ -1,0 +1,80 @@
+generate_new_scratch.txt
+
+Variables: 
+!<INPUT 0>! -- Patient Info
+<commentblockmarker>###</commentblockmarker>
+
+YOU MUST FOLLOW THIS JSON FORMAT EXAMPLE:
+
+{
+  "vision_r": 8, 
+  "att_bandwidth": 8, 
+  "retention": 8, 
+  "curr_time": "February 10, 2025, 06:00:00", 
+  "curr_tile": null, 
+  "schedule_constraints": "Patient 1 visits the emergency department every day at 6am, and leaves the emergency department after the doctor is done seeing them", 
+  "name": "Patient 1", 
+  "first_name": "Patient", 
+  "last_name": "1", 
+  "age": 25, 
+  "behavior_modifiers": "friendly, outgoing, hospitable", 
+  "role_description": "Patient 1 is a hospital patient in the emergency department. Not part of the emergency department staff. They must follow instructions from medical staff to receive treatment in different areas, being moved around areas like the waiting room, triage room, major injuries zone, minor injuries zone, and the operating room. Should not move until told so by someone else.", 
+  "current_state": "Patient 1 just arrived at emergency department. Patient is a severe crushing pain in your chest that's making it hard for you to breathe and leaving you feeling lightheaded. Pain on scale is 7. Now waiting for treatment", 
+  "work_pattern": "Patient 1 is at emergency department all day until treated", 
+  "living_area": "ed map:emergency department:waiting room",
+  "concept_forget": 100,
+  "daily_reflection_time": 180,
+  "daily_reflection_size": 5,
+  "overlap_reflect_th": 4,
+  "kw_strg_event_reflect_th": 10, 
+  "kw_strg_thought_reflect_th": 9, 
+
+  "recency_w": 1,
+  "relevance_w": 1,
+  "importance_w": 1,
+  "recency_decay": 0.995,
+  "importance_trigger_max": 150,
+  "importance_trigger_curr": 150,
+  "importance_ele_n": 0, 
+  "thought_count": 5, 
+
+  "daily_req": [], 
+  "f_daily_schedule": [],
+  "f_daily_schedule_hourly_org": [],
+  "act_address": null, 
+  "act_start_time": null, 
+  "act_duration": null, 
+  "act_description": null, 
+  "act_pronunciatio": null, 
+  "act_event": ["Patient 1", null, null], 
+  "act_obj_description": null, 
+  "act_obj_pronunciatio": null, 
+  "act_obj_event": [null, null, null], 
+  "chatting_with": null, 
+  "chat": null,
+  "chatting_with_buffer": {}, 
+  "chatting_end_time": null,
+  "act_path_set": false, 
+  "planned_path": [],
+  "next_step": null,
+
+  "ICD": null,
+  "CTAS": null,
+  "next_room": null,
+  "state": null,
+  "time_to_next": null,
+  "injuries_zone": null,
+  "exempt_from_data_collection": false
+}
+
+Now generate a BRAND NEW JSON by the fields provided in the example according to this Patients info:
+!<INPUT 0>!
+
+As for the Pain scale pick a number between 1-10 for how much pain the Patient is feeling and place it in the field "current_state".
+
+Change any info in the JSON that would need updating like name, age. Make sure to change all the instances of the name like "Patient 1". All the spelling in the field names must be EXACTLY the same as in the example. DO NOT FIX THE SPELLING OR CHANGE THE SPELLING OF ANY FIELD.
+Make sure to include all the fields in the example.
+
+Only return the NEW JSON and NOTHING ELSE.
+
+Output:

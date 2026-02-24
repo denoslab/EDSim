@@ -1,0 +1,17 @@
+{  
+    "ed map": {
+        "emergency department": {
+            "waiting room": [
+                "waiting room chair", 
+                "computer"
+            ], 
+            "triage room": [
+                "chair", 
+                "computer"
+            ],
+            "minor injuries zone": [],
+            "major injuries zone": [],
+            "diagnostic room": []
+        }   
+    }
+}

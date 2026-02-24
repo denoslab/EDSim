@@ -1,0 +1,27 @@
+Variables: 
+!<INPUT 0>! -- Persona name
+!<INPUT 1>! -- Maze all possible sectors
+!<INPUT 2>! -- Persona name
+!<INPUT 3>! -- Persona living sector
+!<INPUT 4>! -- Persona living sector arenas
+!<INPUT 5>! -- Persona name
+!<INPUT 6>! -- Persona current sector
+!<INPUT 7>! -- Persona current sector arenas
+!<INPUT 8>! -- curr action description
+!<INPUT 9>! -- Persona name
+<commentblockmarker>###</commentblockmarker>
+Task -- choose an appropriate area from the area options for a task at hand. Do not go to waiting room at any cost.
+
+Doctor works in {Emergency Department} that has operating rooms and triage rooms.
+Doctor is current_state in {major injuries zone} that has operating tables and medical equipment.
+Area options: {major injuries zone, Operating Room, minor injuries zone}.
+Stay in the current area if the activity can be done there. Only go out if the activity needs to take place in another place.
+Must be one of the "Area options," verbatim.
+For treating a trauma patient that is in the operating room, the Doctor should go to the following area: {Operating Room}
+---
+!<INPUT 0>! works in {!<INPUT 1>!} that has !<INPUT 2>!.
+!<INPUT 3>! is current_state in {!<INPUT 4>!} that has !<INPUT 5>!. !<INPUT 6>!
+Area options: {!<INPUT 7>!}. 
+* Stay in the current area if the activity can be done there. Only go out if the activity needs to take place in another place.
+* Must be one of the "Area options," VERBATIM.
+!<INPUT 8>! is !<INPUT 9>!. For !<INPUT 10>!, !<INPUT 11>! should go to the following area: {

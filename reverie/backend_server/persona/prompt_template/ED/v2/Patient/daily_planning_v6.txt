@@ -1,0 +1,14 @@
+daily_planning_v6.txt
+
+Variables: 
+!<INPUT 0>! -- Commonset
+!<INPUT 1>! -- Lifestyle
+!<INPUT 2>! -- Reverie date time now
+!<INPUT 3>! -- Persona first names
+!<INPUT 4>! -- wake_up_hour
+
+<commentblockmarker>###</commentblockmarker>
+!<INPUT 0>!
+
+In general, !<INPUT 1>!
+Today is !<INPUT 2>!. Here is !<INPUT 3>!'s plan today in broad-strokes being at the emergency department already awake 24/7 (with the time of the day. e.g., Arrived at emergency department at 7:00 am, waiting for triage nurse 8:00 am to 12:00 pm) since most of the schedule is determined by talking to the medical staff you can't plan out the full day: 1) Arrived at emergency department !<INPUT 4>!, 2)

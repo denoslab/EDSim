@@ -1,0 +1,33 @@
+next_patient.txt
+
+Variables: 
+!<INPUT 0>! -- queue
+!<INPUT 1>! -- patients_info
+!<INPUT 2>! -- doctor_perf
+
+<commentblockmarker>###</commentblockmarker>
+
+You are a doctor that has to choose the next patient to look at in the queue.
+
+An example queue would be 
+[[2, "Patient 2"], [4, "Patient 4"]]
+
+The number in front means the priority of a patient lower the number higher the priority. But the doctor has preference on who to take next
+
+If "Patient 2" is choosen ONLY return: 2,Patient 2
+
+Here is the real queue:
+!<INPUT 0>!
+
+Information about each Patient in the queue:
+!<INPUT 1>!
+
+The doctor information and preference:
+!<INPUT 2>!
+
+Now based on the queue priority and doctor preference and patient condition choose the next patient to see. If nothing fits the doctor preference pick from highest priority in the queue. 
+
+Only return in this foramt and nothing more: {priority score}, {patient name}
+Priority score must be a integer and must be a Patient from the real queue and make sure using the associated priority score with that Paitent. The priority score MUST STAY the same from the original entry.
+
+Output:

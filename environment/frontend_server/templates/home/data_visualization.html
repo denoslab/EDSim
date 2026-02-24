@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-container">
+
+  <h1 class="page-title">ED Simulator Data</h1>
+
+  <p class="nav-hint">
+    Use <strong>←</strong> and <strong>→</strong> arrow keys to navigate
+  </p>
+
+  <h2 id="stage-title" class="stage-title">
+    VisitPIA
+  </h2>
+
+  <div id="charts" class="chart-grid"></div>
+  
+  <button
+    onclick="window.location.href='/start_simulation';"
+    style="margin-top:20px; padding:15px 40px; font-size:18px; border-radius:10px;
+          background:#007BFF; color:white; border:none; cursor:pointer; transition:0.2s;">
+    Home Page
+  </button>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 32px 48px;
+}
+
+.page-title {
+  text-align: center;
+  color:#007BFF;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.nav-hint {
+  text-align: center;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.stage-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 28px;
+  color: #333;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+  gap: 32px;
+}
+
+.chart-wrapper {
+  height: 420px;
+  padding: 16px 18px 12px;
+  border-radius: 12px;
+  background: #fafafa;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+</style>
+
+<script>
+const slides = ["waiting", "treatment", "ed"];
+
+const stageTitles = {
+  waiting: "Distribution of Wait Time (Arrival to PIA Time) Stratified by CTAS",
+  treatment: "Distribution of Time in Treatment (PIA To Disposition) Stratified by CTAS",
+  ed: "Distribution of Total Time in ED (PIA To Leave) Stratified by CTAS"
+};
+
+const slideTitles = {
+  waiting: "VisitPia",
+  treatment: "DispPia",
+  ed: "PiaLeave"
+};
+
+let current = 0;
+let cachedData = null;
+let charts = [];
+let yMaxByStage = {};
+
+async function loadData() {
+  const res = await fetch("/api/state_times/?sim_code=test-simulation");
+  return await res.json();
+}
+
+function getYMaxByStage(data) {
+  const result = {};
+
+  Object.entries(data).forEach(([stage, stageData]) => {
+    let max = 0;
+    Object.values(stageData).forEach(ctas =>
+      ctas.counts.forEach(v => {
+        if (v > max) max = v;
+      })
+    );
+    result[stage] = max;
+  });
+
+  return result;
+}
+
+function cleanLabels(bins) {
+  return bins.map(b => {
+    if (typeof b === "string") {
+      return b.split(/-|–/)[0];
+    }
+    return b;
+  });
+}
+
+function render(stage) {
+  document.getElementById("stage-title").textContent = stageTitles[stage];
+
+  charts.forEach(c => c.destroy());
+  charts = [];
+
+  const container = document.getElementById("charts");
+  container.innerHTML = "";
+
+  const ctasKeys = Object.keys(cachedData[stage]);
+  const stageYMax = yMaxByStage[stage];
+
+  ctasKeys.forEach(ctas => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "chart-wrapper";
+
+    const canvas = document.createElement("canvas");
+    wrapper.appendChild(canvas);
+    container.appendChild(wrapper);
+
+    const data = cachedData[stage][ctas];
+
+    const chart = new Chart(canvas.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: cleanLabels(data.bins),
+        datasets: [{
+          label: ctas,
+          data: data.counts,
+          backgroundColor: "rgba(54, 162, 235, 0.75)",
+          barPercentage: 1.0,
+          categoryPercentage: 1.0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `${slideTitles[stage]} ${ctas}`,
+            font: { size: 16 },
+            padding: { bottom: 10 }
+          }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: "Wait Times (Hours)"
+            },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 8
+            }
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: stageYMax,
+            title: {
+              display: true,
+              text: "Frequency"
+            },
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+
+    charts.push(chart);
+  });
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") {
+    current = (current + 1) % slides.length;
+    render(slides[current]);
+  }
+  if (e.key === "ArrowLeft") {
+    current = (current - 1 + slides.length) % slides.length;
+    render(slides[current]);
+  }
+});
+
+loadData().then(data => {
+  cachedData = data;
+  yMaxByStage = getYMaxByStage(data);
+  render(slides[current]);
+});
+</script>
+
+{% endblock %}

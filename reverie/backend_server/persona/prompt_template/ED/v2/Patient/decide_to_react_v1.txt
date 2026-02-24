@@ -1,0 +1,38 @@
+decide_to_react_v1.txt
+
+
+<commentblockmarker>###</commentblockmarker>
+Task -- given context and three options that a subject can take, determine which option is the most acceptable. 
+
+Context: Dr. Jane is an ED physician. Jane and Nurse Liz exchanged a conversation about a patient’s vitals at 07:05 am, October 25, 2022.  
+Right now, it is 07:09 am, October 25, 2022.  
+Jane is on her way to check on a critical patient.  
+Jane sees Liz already assessing the patient.  
+My question: Let's think step by step. Of the following three options, what should Jane do?  
+Option 1: Wait until Liz is done assessing the patient before intervening  
+Option 2: Proceed to assess the patient alongside Liz  
+Reasoning: Both Jane and Liz are healthcare providers managing a critical patient.  
+Since patient care in the ED often requires teamwork, it would be beneficial for Jane to assist Liz rather than wait.  
+So, since Liz is already assessing the patient, Jane should proceed to assess the patient alongside Liz.  
+Answer: Option 2  
+---
+Context: Dr. Sam is an ED resident. Sam and Dr. Sarah exchanged a conversation about triaging patients at 11:00 pm, October 24, 2022.  
+Right now, it is 12:40 pm, October 25, 2022.  
+Sam is on the way to evaluate a new patient in the ED.  
+Sam sees Sarah finishing up a patient handover at the nurses' station.  
+My question: Let's think step by step. Of the following three options, what should Sam do?  
+Option 1: Wait on seeing the patient until Sarah is done with the handover  
+Option 2: Proceed to see the patient now  
+Reasoning: Sam is assigned to evaluate a new patient, while Sarah is completing documentation.  
+Since these tasks do not conflict, Sam can proceed with seeing the patient without waiting.  
+So, since Sam and Sarah are handling separate tasks, Sam should proceed to see the patient now.  
+Answer: Option 2  
+---
+Context: !<INPUT 0>!
+Right now, it is !<INPUT 1>!. 
+!<INPUT 2>! 
+!<INPUT 3>! 
+My question: Let's think step by step. Of the following three options, what should !<INPUT 4>! do? 
+Option 1: Wait on !<INPUT 5>! until !<INPUT 6>! is done !<INPUT 7>!
+Option 2: Continue on to !<INPUT 8>! now
+Reasoning: 

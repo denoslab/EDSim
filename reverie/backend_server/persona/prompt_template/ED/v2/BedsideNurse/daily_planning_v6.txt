@@ -1,0 +1,14 @@
+daily_planning_v6.txt
+
+Variables: 
+!<INPUT 0>! -- Commonset
+!<INPUT 1>! -- Lifestyle
+!<INPUT 2>! -- Reverie date time now
+!<INPUT 3>! -- Persona first names
+!<INPUT 4>! -- wake_up_hour
+
+<commentblockmarker>###</commentblockmarker>
+!<INPUT 0>!
+
+In general, !<INPUT 1>!
+Today is !<INPUT 2>!. Here is !<INPUT 3>!'s plan today in broad-strokes being at the emergency department already and WORKING AND AWAKE 24/7, TAKING NO BREAKS. (with the time of the day. e.g., doocument patient updates at 7:00 am, treating patients in the major and minor zone from 8:00 am to 12:00 pm): Spending most of the day in the major and minor zones. 1) Arrived at emergency department !<INPUT 4>!, 2)

@@ -1,0 +1,36 @@
+Variables:
+!<INPUT 0>! -- Persona name (e.g., Patient 3, Triage Nurse, Bedside Nurse)
+!<INPUT 1>! -- Persona's current area in the Emergency Department (e.g., waiting room, triage room, major injury zone)
+!<INPUT 2>! -- All accessible areas in the Emergency Department (excluding restricted areas)
+!<INPUT 3>! -- Persona name (repeated for formatting consistency)
+!<INPUT 4>! -- Target sector or specific action-related area (e.g., triage room for assessment, major injury zone for treatment)
+!<INPUT 5>! -- All accessible areas in the persona’s sector (excluding restricted areas, same as !<INPUT 2>!)
+!<INPUT 6>! -- Current action the persona is performing (e.g., waiting for assessment, treating a patient, transporting a patient)
+!<INPUT 7>! -- Persona name (repeated for formatting consistency)
+!<INPUT 8>! -- Persona's current sector (same as !<INPUT 1>!, for formatting consistency)
+
+<commentblockmarker>###</commentblockmarker>
+---
+-EXAMPLE-
+Patient 3 is waiting for a triage assessment in the triage room.
+Patient 3 is waiting for a triage nurse to come and do a check up on them.
+The Emergency Department consists of the following areas: {triage room, operating room}.  
+Stay in the current area until the next step in the patient flow is assigned.  
+For triage assessment, Triage Nurse should go to the following area in the Emergency Department (MUST pick one of {triage room, operating room}):  
+Answer: {triage room}
+---
+-EXAMPLE-
+Patient 4 is waiting for a staff to check in on them in the waiting room.
+Patient 4 is waiting for a triage nurse to come and do a check up on them and bring them to the triage room.
+The Emergency Department consists of the following areas: {triage room,operating room}.  
+Stay in the current area until the next step in the patient flow is assigned.  
+For assessment, Triage Nurse should go to the following area in the Emergency Department (MUST pick one of {triage room, operating room}):  
+Answer: {triage room}
+---
+!<INPUT 0>! is in !<INPUT 1>! in the Emergency Department.  
+!<INPUT 0>! is performing !<INPUT 6>!.  
+The Emergency Department consists of the following areas: {!<INPUT 2>!}.  
+* Stay in the current area if the action can be performed there.  
+!<INPUT 3>! is !<INPUT 4>!. For !<INPUT 5>!, !<INPUT 6>! should go to the following area in the Emergency Department (MUST pick one of {!<INPUT 8>!}):  
+NEVER asnwer with 'emergency department'
+Answer: {

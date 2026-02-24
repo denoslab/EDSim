@@ -1,0 +1,11 @@
+summarize_conversation_v1.txt
+
+Variables: 
+!<INPUT 0>! -- init_persona_name
+
+<commentblockmarker>###</commentblockmarker>
+Conversation: 
+!<INPUT 0>!
+
+Summarize the conversation above in one sentence. (Make to prioritize information about where to go next given by in this conversation):
+This is a conversation about

@@ -1,0 +1,18 @@
+{
+    "ed map": {
+        "emergency department": {
+            "diagnostic room": [
+                "chair", 
+                "diagnostic table"
+                ], 
+            "major injuries zone": [
+                "bed", 
+                "medical equipment"
+                ], 
+            "minor injuries zone": [
+                "bed",
+                "medical equipment"
+                ]
+        }       
+    }        
+}

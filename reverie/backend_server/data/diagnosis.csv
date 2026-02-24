@@ -1,0 +1,13 @@
+Diagnosis,percentage,normalized_percentage,normalized_fraction,ICD-10-CA,Symptoms,CTAS,Zone
+Chest pain unspecified,3.87,25.998462,0.259984615,R07.4,"tightness; pressure; aching; burning; or sharp pain in the chest",2,major injuries zone
+Other and unspecified abdominal pain,2.11,17.583333,0.175833333,R10.4,"cramping; aching; dull; sharp; or burning pain in the abdomen",3,minor injuries zone
+Other chest pain,1.63,13.583333,0.135833333,R07.3,"stabbing sensation; tenderness to touch; or discomfort that worsens with breathing or movement",3,minor injuries zone
+Headache,1.44,3.641763,0.036417634,R51,"throbbing; aching; pressing; or sharp pain in the head",4,minor injuries zone
+Concussion,1.24,10.333333,0.103333333,S06.0,"headache; dizziness; confusion; nausea; sensitivity to light or noise; problems with memory or concentration; and feeling foggy.",3,major injuries zone
+Syncope and collapse,1.11,7.456923,0.074569231,R55,"sudden; temporary loss of consciousness (fainting) preceded by dizziness; lightheadedness; nausea; or a sudden feeling of warmth",2,major injuries zone
+Dizziness and giddiness,1.06,2.680742,0.026807424,R42,"lightheadedness; unsteadiness; spinning (vertigo); or feeling faint",4,minor injuries zone
+Gastroenteritis and colitis of unspecified origin,0.93,2.351972,0.023519721,A09.9,"nausea; vomiting; diarrhea; abdominal cramps; and sometimes fever",4,minor injuries zone
+Urinary tract infection site not specified,0.88,2.225522,0.022255220,N39.0,"pain or burning during urination; frequent urge to urinate; cloudy or strong-smelling urine; and pelvic pain",4,minor injuries zone
+Dyspnea,0.87,5.844615,0.058446154,R06.0,"shortness of breath; You might experience a feeling of tightness in your chest; gasping for air; or rapid; shallow breathing",2,major injuries zone
+Cardiac arrest (cause unspecified),5.9,5.900000,0.059000000,I46.9,"unresponsive; no pulse; not breathing normally; collapse; possible cyanosis",1,trauma room
+Sprain of ankle,2.4,2.400000,0.024000000,S93.4,"ankle pain; swelling; bruising; and difficulty walking or bearing weight after a twist or fall",5,minor injuries zone

@@ -1,0 +1,10 @@
+{
+    "ed map": {
+        "emergency department": {
+            "triage room": [
+                "chair", 
+                "computer"
+            ]
+        }       
+    }        
+}

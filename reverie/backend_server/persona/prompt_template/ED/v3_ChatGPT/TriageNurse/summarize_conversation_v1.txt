@@ -1,0 +1,14 @@
+summarize_conversation_v1.txt
+
+Variables: 
+!<INPUT 0>! -- init_persona_name
+
+<commentblockmarker>###</commentblockmarker>
+Conversation: 
+!<INPUT 0>!
+
+Summarize the conversation above in one sentence. 
+ONLY IF TALKING TO A Patient include information about where you sent the patients such as to the 'minor injuries zone', 'major injuries zone' or 'trauma room'. But only if it's with a Patient.
+MUST INCLUDE CTAS SCORE in THIS FORMAT 'CTAS score of {insert CTAS score}'. Only do this with a Patient.
+
+This is a conversation about

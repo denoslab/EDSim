@@ -1,0 +1,884 @@
+{% load staticfiles %}
+
+<script type="text/javascript">
+    /*
+      Updated to use .spritesheet() for each character PNG (3x4 frames).
+      We define animations using generateFrameNumbers rather than atlas frames.
+      The rest of your logic (movement, snapping, speech bubbles) remains the same.
+    */
+
+    // ###########################################################################
+    // PREAMBLE
+    // ###########################################################################
+
+    let step = {{step}};
+    let sim_code = "{{sim_code}}";
+    let step_size = {{sec_per_step}} * 1000;
+    let maze_size = {{maze_size}};
+    console.log(maze_size)
+    let replaySpeed = 0.25; // Default for your speed controls (optional)
+    const config = {
+        type: Phaser.AUTO,
+        // Sets the size of the canvas based on map size
+        width: (maze_size[0] * 32),
+        height: (maze_size[1] * 32),
+        parent: "game-container",
+        pixelArt: true,
+        physics: {
+            default: "arcade",
+            arcade: {
+                gravity: { y: 0 }
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        },
+        // Make sure the map is a good size on the webpage for most sizes
+        scale: { zoom: 26 / maze_size[0] }
+    };
+
+    const game = new Phaser.Game(config);
+    let cursors;
+    let player;
+
+    // Persona data
+    let persona_init_list = {{ persona_init_pos|safe }};
+    let spawn_tile_loc = {};
+    for (let i = 0; i < persona_init_list.length; i++) {
+        let name = persona_init_list[i][0].replaceAll(" ", "_");
+        spawn_tile_loc[name] = [persona_init_list[i][1], persona_init_list[i][2]];
+    }
+    console.log("spawn_tile_loc:", spawn_tile_loc);
+
+    let personas = {};
+    let pronunciatios = {};
+    let speech_bubbles = {};
+    let pre_anims_direction_dict = {};
+
+    let role_amount = {}
+    
+    let tile_width = 32;
+    let movement_speed = {{play_speed}};
+    let execute_count_max = tile_width/movement_speed;
+    console.log(tile_width)
+    let execute_count = execute_count_max;
+    let movement_target = {};
+    let all_movement = {{ all_movement|safe }};
+
+    // Keep track of agents that don't have a sprite map
+    let has_sprit_maps = [];
+
+    //Keep track off patient amount for sprite settings
+    let patient_amount = 0;
+
+    let start_datetime = new Date(Date.parse("{{start_datetime}}"));
+    let datetime_options = {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    };
+    document.getElementById("game-time-content").innerHTML =
+        start_datetime.toLocaleString("en-US", datetime_options).replace(/,/, '');
+
+    // ###########################################################################
+    // ENGINE
+    // ###########################################################################
+
+    function preload() {
+        this.load.crossOrigin = '';
+
+        // Load Tiled map
+        this.load.image("blocks_2", "{% static 'assets/the_ed/visuals/map_assets/blocks/blocks_2.png' %}");
+        this.load.image("blocks_3", "{% static 'assets/the_ed/visuals/map_assets/blocks/blocks_3.png' %}");
+        this.load.image("atlas_32x", "{% static 'assets/the_ed/visuals/map_assets/blocks/atlas_32x.png' %}");
+        this.load.image("shop-and-hospital", "{% static 'assets/the_ed/visuals/map_assets/blocks/shop-and-hospital.png' %}");
+        this.load.image("tileset_B", "{% static 'assets/the_ed/visuals/map_assets/blocks/tileset_B.png' %}");
+        this.load.tilemapTiledJSON("map", `/get_maze_visuals/${sim_code}/demo/`);
+
+        // Load speech bubble
+        this.load.image('speech_bubble', "{% static 'assets/speech_bubble/v3.png' %}");
+
+        // -----------------------------------------------
+        // Load each character as a .spritesheet() instead of an atlas
+        // We assume each PNG is 3 columns x 4 rows = 12 frames, each 32x48
+        // If your frames are 32x32, adjust accordingly.
+        // -----------------------------------------------
+        // Example: "Bedside_Nurse.png" => frameWidth: 32, frameHeight: 48
+        // Also for "Doctor.png", "Patient_1.png", etc.
+
+        // The "atlas" for the player (if you want the main sprite to also be a spritesheet)
+        // We'll assume "Bedside_Nurse.png" is the main sprite for the player:
+        this.load.spritesheet("atlas",
+            "{% static 'assets/characters/original/Bedside_Nurse.png' %}",
+            { frameWidth: 32, frameHeight: 48}
+        );
+        
+        // For each persona (like Doctor, Triage_Nurse, Patient_1, etc.),
+        // load them as spritesheets with the same 32x48 assumption:
+        {% for sprite in sprite_maps %}
+            {% with 'assets/characters/'|add:sprite|add:'.png' as image_static %}
+                this.load.spritesheet("{{ sprite }}",
+                    "{% static image_static %}",
+                    { frameWidth: 32, frameHeight: 48 }
+                );
+            {% endwith %}
+        {% endfor %}
+        this.load.on('filecomplete', function (key) {
+            console.log("Loaded:", key);
+            has_sprit_maps.push(key.split(".")[0]);
+            const role = key.split(".")[0].replace(/_\d+$/, '')
+
+            if(Object.keys(role_amount).includes(role)){
+                role_amount[role]++;
+            }
+            else{
+                role_amount[role] = 1;
+            }
+        });
+        this.load.on('loaderror', function (file) {
+            console.error("Load failed:", file.key);
+        });
+    }
+
+    function create() {
+        const map = this.make.tilemap({ key: "map" });
+        const blocks_2 = map.addTilesetImage("blocks_2", "blocks_2");
+        const blocks_3 = map.addTilesetImage("blocks_3", "blocks_3");
+        const atlas_32x = map.addTilesetImage("atlas_32x", "atlas_32x");
+        const shop_and_hospital = map.addTilesetImage("shop-and-hospital", "shop-and-hospital");
+        const tileset_B = map.addTilesetImage("tileset_B", "tileset_B");
+
+        map.createLayer("Object Interaction Layer", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+        map.createLayer("Sector Layer", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+        map.createLayer("Arena Layer", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+        map.createLayer("Spawning Blocks", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+        const collisionsLayer = map.createLayer("Collisions", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+        map.createLayer("Floor", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+        map.createLayer("Walls", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+        map.createLayer("Tile Layer 1", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+
+        collisionsLayer.setCollisionByProperty({ collide: true });
+        collisionsLayer.setDepth(-1);
+
+        // Create a camera-follow sprite (Player).
+        // We loaded "atlas" as a spritesheet with 32x48 frames.
+        // Let's pick frame 0 as the initial frame. Adjust as needed.
+        player = this.physics.add
+            .sprite(2400, 588, "atlas", 0)
+            .setSize(30, 30)
+            .setOffset(0, 0)
+            .setOrigin(0.5, 0.85);  // anchor at bottom center
+        player.setDepth(-1);
+
+        const camera = this.cameras.main;
+        camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+        cursors = this.input.keyboard.createCursorKeys();
+
+        // Create persona sprites
+        for (let i = 0; i < Object.keys(spawn_tile_loc).length; i++) {
+            let persona_name = Object.keys(spawn_tile_loc)[i];
+            let start_pos = [
+                spawn_tile_loc[persona_name][0] * tile_width + tile_width / 2,
+                spawn_tile_loc[persona_name][1] * tile_width + tile_width
+            ];
+            let persona_sprite = null;
+            // If a persona does not have a sprite map assign it a sprite that exsists a find another sprite 
+            if (!has_sprit_maps.includes(persona_name)){
+
+                let role_split = persona_name.split("_");
+
+                const num = role_split.pop();
+                const role = role_split.join("_");
+                persona_sprite = `${role}_${(parseInt(num) % role_amount[role])+ 1}`;  
+            }
+            else{
+                persona_sprite = persona_name;
+
+            }
+            const new_sprite = this.physics.add
+                // Use frame 0 as the idle start for each persona
+                .sprite(start_pos[0], start_pos[1], persona_sprite, 0)
+                .setSize(30, 30)
+                .setOffset(0, 10)
+                .setOrigin(0.5, 1);
+            // Optional scaling
+            new_sprite.displayWidth = 30;
+            new_sprite.scaleY = new_sprite.scaleX;
+
+            // Store references
+            personas[persona_name] = new_sprite;
+            // Save sprite choosen in persona for animations
+            personas[persona_name]["persona_sprite"] = persona_sprite; 
+            speech_bubbles[persona_name] = this.add
+                .image(new_sprite.body.x, new_sprite.body.y - 30, 'speech_bubble')
+                .setDepth(3);
+            speech_bubbles[persona_name].displayWidth = 130;
+            speech_bubbles[persona_name].displayHeight = 58;
+
+            pronunciatios[persona_name] = this.add.text(
+                new_sprite.body.x - 6,
+                new_sprite.body.y - 42,
+                "⏳",
+                {
+                    font: "24px monospace",
+                    fill: "#000000",
+                    padding: { x: 8, y: 8 },
+                    border: "solid",
+                    borderRadius: "10px"
+                }
+            ).setDepth(3);
+
+            addPersonaToDOM(persona_name)
+            addNewPersonaSection(persona_name.replaceAll("_", " "), persona_name);
+
+            console.log("Spawning", persona_name, "at", start_pos);
+
+            const anims = this.anims;
+            // Use the sprite that was save in the persona object
+            anims.create({
+                key: persona_name + "-down-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 0, end: 2 }),
+                frameRate: 6,
+                repeat: -1
+            });
+
+            anims.create({
+                key: persona_name + "-left-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 3, end: 5 }),
+                frameRate: 6,
+                repeat: -1
+            });
+
+            anims.create({
+                key: persona_name + "-right-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 6, end: 8 }),
+                frameRate: 6,
+                repeat: -1
+            });
+
+            anims.create({
+                key: persona_name + "-up-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 9, end: 11 }),
+                frameRate: 6,
+                repeat: -1
+            });
+        }
+
+        // -----------------------------------------------
+        // Create walk animations for each persona
+        // We'll assume a 3x4 sheet: 
+        //  - frames 0..2 = facing down
+        //  - frames 3..5 = facing left
+        //  - frames 6..8 = facing right
+        //  - frames 9..11 = facing up
+        // If your sprite layout differs, adjust the frame indices below.
+        // -----------------------------------------------
+    }
+
+    function update(time, delta) {
+        // Play/Pause
+        let play_context = this;
+        function game_resume() { play_context.scene.resume(); }
+        play_button.onclick = function() { game_resume(); };
+        function game_pause() { play_context.scene.pause(); }
+        pause_button.onclick = function() { game_pause(); };
+
+        // Camera movement
+        const camera_speed = 400;
+        player.body.setVelocity(0);
+        if (cursors.left.isDown) {
+            player.body.setVelocityX(-camera_speed);
+            // If you want to animate the player, do:
+            // player.anims.play("atlas-left-walk", true);
+        }
+        if (cursors.right.isDown) {
+            player.body.setVelocityX(camera_speed);
+            // player.anims.play("atlas-right-walk", true);
+        }
+        if (cursors.up.isDown) {
+            player.body.setVelocityY(-camera_speed);
+            // player.anims.play("atlas-up-walk", true);
+        }
+        if (cursors.down.isDown) {
+            player.body.setVelocityY(camera_speed);
+            // player.anims.play("atlas-down-walk", true);
+        }
+
+        // Focus camera on persona if requested
+        let curr_focused_persona = document.getElementById("temp_focus").textContent;
+        if (curr_focused_persona !== "") {
+            player.body.x = personas[curr_focused_persona].body.x;
+            player.body.y = personas[curr_focused_persona].body.y;
+            document.getElementById("temp_focus").innerHTML = "";
+        }
+
+        // Move each persona
+        for (let i = 0; i < Object.keys(personas).length; i++) {
+            let curr_persona_name = Object.keys(personas)[i];
+            let curr_persona = personas[curr_persona_name];
+            let curr_pronunciatio = pronunciatios[curr_persona_name];
+            let curr_speech_bubble = speech_bubbles[curr_persona_name];
+
+            if (curr_persona_name.replaceAll("_", " ") in all_movement[step]) {
+                if (execute_count === execute_count_max) {
+                    let data = all_movement[step][curr_persona_name.replaceAll("_", " ")];
+                    let [mx, my] = data["movement"];
+                    movement_target[curr_persona_name] = [mx * tile_width, my * tile_width];
+
+                    let pronunciatio_content = data["pronunciatio"] || "";
+                    let description_content = data["description"] || "";
+                    let chat_content_raw = data["chat"] || null;
+                    let chat_content = chat_content_raw
+                        ? chat_content_raw.map(([speaker, msg]) => speaker + ": " + msg + "<br>").join("")
+                        : "<em>None at the moment</em>";
+
+                    // Initials
+                    let rgx = new RegExp(/(\p{L}{1})\p{L}+/, 'gu');
+                    let initials = [...curr_persona_name.matchAll(rgx)] || [];
+                    initials = ((initials.shift()?.[1] || '') + (initials.pop()?.[1] || '')).toUpperCase();
+                    curr_pronunciatio.setText(initials + ": " + pronunciatio_content);
+                    document.getElementById("quick_emoji-" + curr_persona_name).innerHTML = pronunciatio_content;
+                    document.getElementById("current_action__" + curr_persona_name).innerHTML = description_content.split("@")[0];
+                    document.getElementById("target_address__" + curr_persona_name).innerHTML = description_content.split("@")[1];
+                    document.getElementById("chat__" + curr_persona_name).innerHTML = chat_content;
+                }
+
+                if (execute_count > 0) {
+                    let anims_direction = "";
+                    let [finalX, finalY] = movement_target[curr_persona_name];
+
+                    // Snap X coordinate if close enough
+                    if (Math.abs(curr_persona.body.x - finalX) <= movement_speed) {
+                        curr_persona.body.x = finalX;
+                    } else if (curr_persona.body.x < finalX) {
+                        curr_persona.body.x += movement_speed;
+                        anims_direction = "r";
+                        pre_anims_direction_dict[curr_persona_name] = "r";
+                    } else if (curr_persona.body.x > finalX) {
+                        curr_persona.body.x -= movement_speed;
+                        anims_direction = "l";
+                        pre_anims_direction_dict[curr_persona_name] = "l";
+                    }
+
+                    // Snap Y coordinate if close enough
+                    if (Math.abs(curr_persona.body.y - finalY) <= movement_speed) {
+                        curr_persona.body.y = finalY;
+                    } else if (curr_persona.body.y < finalY) {
+                        curr_persona.body.y += movement_speed;
+                        anims_direction = "d";
+                        pre_anims_direction_dict[curr_persona_name] = "d";
+                    } else if (curr_persona.body.y > finalY) {
+                        curr_persona.body.y -= movement_speed;
+                        anims_direction = "u";
+                        pre_anims_direction_dict[curr_persona_name] = "u";
+                    }
+
+                    // Move bubble + text with sprite
+                    curr_pronunciatio.x = curr_persona.body.x + 18;
+                    curr_pronunciatio.y = curr_persona.body.y - 42 - 25;
+                    curr_speech_bubble.x = curr_persona.body.x + 80;
+                    curr_speech_bubble.y = curr_persona.body.y - 39;
+
+                    // Play walk anim
+                    // Using the sprite location saved in the persona object
+                    let left_walk_name = personas[curr_persona_name]["persona_sprite"] + "-left-walk";
+                    let right_walk_name = personas[curr_persona_name]["persona_sprite"] + "-right-walk";
+                    let down_walk_name = personas[curr_persona_name]["persona_sprite"] + "-down-walk";
+                    let up_walk_name = personas[curr_persona_name]["persona_sprite"] + "-up-walk";
+
+                    if (anims_direction === "l") {
+                        curr_persona.anims.play(left_walk_name, true);
+                    } else if (anims_direction === "r") {
+                        curr_persona.anims.play(right_walk_name, true);
+                    } else if (anims_direction === "u") {
+                        curr_persona.anims.play(up_walk_name, true);
+                    } else if (anims_direction === "d") {
+                        curr_persona.anims.play(down_walk_name, true);
+                    }
+                }
+            } else {
+                // Idle
+                curr_persona.anims.stop();
+                let lastDir = pre_anims_direction_dict[curr_persona_name];
+                if (lastDir === "l") {
+                    // Set a static frame for left idle. Typically frame 3 in a 3x4 sheet.
+                    curr_persona.setFrame(4);
+                } else if (lastDir === "r") {
+                    // Right idle = frame 6
+                    curr_persona.setFrame(7);
+                } else if (lastDir === "u") {
+                    // Up idle = frame 9
+                    curr_persona.setFrame(10);
+                } else {
+                    // Down idle = frame 0
+                    curr_persona.setFrame(1);
+                }
+            }
+        }
+
+        // Once movement is done, next step
+        if (execute_count === 0) {
+            for (let i = 0; i < Object.keys(personas).length; i++) {
+                let curr_persona_name = Object.keys(personas)[i];
+                let curr_persona = personas[curr_persona_name];
+                if (movement_target[curr_persona_name]) {
+                    curr_persona.body.x = movement_target[curr_persona_name][0];
+                    curr_persona.body.y = movement_target[curr_persona_name][1];
+                }
+            }
+            execute_count = execute_count_max + 1;
+
+            // Checking for new persona in new step section.
+            Object.keys(all_movement[step]).forEach(name => {
+                //Match name format in personas array
+                let persona_name = name.replaceAll(" ", "_");
+                if(!Object.keys(personas).includes(persona_name)){
+                    init_pos = all_movement[step][name]["movement"]
+
+                    //Create new persona
+                    console.log("Persona Added", name)
+                    let start_pos = [
+                        init_pos[0] * tile_width + tile_width / 2,
+                        init_pos[1] * tile_width + tile_width
+                    ];
+
+                    let persona_sprite = null;
+                    if(!(has_sprit_maps.includes(persona_name))){
+
+                        let role_split = persona_name.split("_");
+
+                        const num = role_split.pop();
+                        const role = role_split.join("_");
+                        persona_sprite = `${role}_${(parseInt(num) % role_amount[role])+ 1}`;  
+                    }
+                    else{
+                        persona_sprite = persona_name;
+                    }
+                    const new_sprite = this.physics.add
+                        // Use frame 0 as the idle start for each persona
+                        .sprite(start_pos[0], start_pos[1], persona_sprite, 0)
+                        .setSize(30, 30)
+                        .setOffset(0, 10)
+                        .setOrigin(0.5, 1);
+                    
+
+                    // Optional scaling
+                    new_sprite.displayWidth = 30;
+                    new_sprite.scaleY = new_sprite.scaleX;
+
+                    // Store references
+                    personas[persona_name] = new_sprite;
+                    personas[persona_name]["persona_sprite"] = persona_sprite;
+
+                    speech_bubbles[persona_name] = this.add
+                        .image(new_sprite.body.x, new_sprite.body.y - 30, 'speech_bubble')
+                        .setDepth(3);
+                    speech_bubbles[persona_name].displayWidth = 130;
+                    speech_bubbles[persona_name].displayHeight = 58;
+
+                    pronunciatios[persona_name] = this.add.text(
+                    new_sprite.body.x - 6,
+                    new_sprite.body.y - 42,
+                        "⏳",
+                        {
+                            font: "24px monospace",
+                            fill: "#000000",
+                            padding: { x: 8, y: 8 },
+                            border: "solid",
+                            borderRadius: "10px"
+                        }
+                    ).setDepth(3);
+
+                    if(has_sprit_maps.includes(persona_name)){
+                        // Use the sprite that was save in the persona object
+                        const anims = this.anims;
+
+                        anims.create({
+                            key: persona_name + "-down-walk",
+                            frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 0, end: 2 }),
+                            frameRate: 6,
+                            repeat: -1
+                        });
+
+                        anims.create({
+                            key: persona_name + "-left-walk",
+                            frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 3, end: 5 }),
+                            frameRate: 6,
+                            repeat: -1
+                        });
+
+                        anims.create({
+                            key: persona_name + "-right-walk",
+                            frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 6, end: 8 }),
+                            frameRate: 6,
+                            repeat: -1
+                        });
+
+                        anims.create({
+                            key: persona_name + "-up-walk",
+                            frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 9, end: 11 }),
+                            frameRate: 6,
+                            repeat: -1
+                        });
+                    }
+
+                    console.log("Spawning", persona_name, "at", start_pos);
+
+                    addPersonaToDOM(persona_name)
+                    addNewPersonaSection(persona_name.replaceAll("_", " "), persona_name);                
+                }
+
+                if(all_movement[step][name]["movement"][1] >= 19){
+                    personas[persona_name].destroy();
+                    pronunciatios[persona_name].destroy();
+                    speech_bubbles[persona_name].destroy();
+                    delete personas[persona_name];
+                    console.log("After deletion", Object.keys(personas));
+                }
+            });
+            
+
+            step++;
+
+            start_datetime = new Date(start_datetime.getTime() + step_size);
+            document.getElementById("game-time-content").innerHTML =
+            start_datetime.toLocaleString("en-US", datetime_options).replace(/,/, '');
+        }
+
+        execute_count--;
+    }
+
+    var play_button = document.getElementById("play_button");
+    var pause_button = document.getElementById("pause_button");
+    // Speed control button binders
+    var slower_button = document.getElementById("slower_button");
+    var normal_button = document.getElementById("normal_button");
+    var faster_button = document.getElementById("faster_button");
+    var fastest_button = document.getElementById("fastest_button");
+
+    // Animation speed update function
+    function updateAnimationSpeeds() {
+        const anims = game.anims;
+        const baseFrameRate = 6; // matches your original
+        const newFrameRate = baseFrameRate * replaySpeed;
+
+        // Update all persona animations
+        for (let persona_name in personas) {
+            let directions = ["left-walk", "right-walk", "down-walk", "up-walk"];
+            directions.forEach(direction => {
+                let animKey = persona_name + "-" + direction;
+                let anim = anims.get(animKey);
+                if (anim) {
+                    anim.frameRate = newFrameRate;
+                }
+            });
+        }
+
+        // Optionally also update the player's animations
+        let playerDirections = ["atlas-down-walk", "atlas-left-walk", "atlas-right-walk", "atlas-up-walk"];
+        playerDirections.forEach(key => {
+            let anim = anims.get(key);
+            if (anim) anim.frameRate = newFrameRate;
+        });
+    }
+
+    // Update active button UI
+    function updateActiveSpeedButton(activeButton) {
+        [slower_button, normal_button, faster_button, fastest_button].forEach(function(btn) {
+            btn.classList.remove('active');
+        });
+        activeButton.classList.add('active');
+    }
+
+    // Speed button event handlers
+    slower_button.onclick = function() {
+        replaySpeed = 0.1;
+        updateActiveSpeedButton(this);
+        updateAnimationSpeeds();
+    };
+
+    normal_button.onclick = function() {
+        replaySpeed = 0.25;
+        updateActiveSpeedButton(this);
+        updateAnimationSpeeds();
+    };
+
+    faster_button.onclick = function() {
+        replaySpeed = 0.5;
+        updateActiveSpeedButton(this);
+        updateAnimationSpeeds();
+    };
+
+    fastest_button.onclick = function() {
+        replaySpeed = 1;
+        updateActiveSpeedButton(this);
+        updateAnimationSpeeds();
+    };
+
+    // ###########################################################################
+    // OPTIONAL: DEBUG COLLISION & HITBOXES
+    // ###########################################################################
+    /*
+    // Uncomment these lines to visualize bounding boxes and collision tiles:
+    this.physics.world.drawDebug = true;
+    this.physics.world.debugGraphic = this.add.graphics();
+    this.physics.world.debugGraphic.setPosition(0, 0);
+
+    // Also debug the collisions layer
+    const debugGraphics = this.add.graphics().setAlpha(0.75);
+    collisionsLayer.renderDebug(debugGraphics, {
+        tileColor: null,
+        collidingTileColor: new Phaser.Display.Color(243, 134, 48, 100),
+        faceColor: new Phaser.Display.Color(40, 39, 37, 255)
+    });
+    */
+
+    function addPersonaToDOM(persona_name, staticImagesBaseUrl = "static_dirs/assets/characters/") {
+        // 1. Get the container where you want to add the new persona
+        //    Assuming the main container for personas is the first div with class 'row'.
+        //    Consider adding a more specific ID to this container if there are multiple 'row' divs.
+        const initial = persona_name.split("_")[0][0] + persona_name.split("_").pop()
+        const personasContainer = document.getElementById('persona');
+
+        if (!personasContainer) {
+            console.error('Persona container (persona) not found in the DOM.');
+            return;
+        }
+
+		const newHtml = `<div class="col-md-2 col-sm-2" style="text-align:center; margin-bottom:0.8em;" >
+                            <a href="#" id="on_screen_det_trigger-${persona_name}">
+                                <div class="row" style="padding:0">
+                                    <div class="col-md-4" id="on_screen_det_trigger_container-${persona_name}" style="text-align:center; padding:0; padding-top:0.3em">
+                                        <img src="/character_image/?url=assets/characters/profile/${personas[persona_name]["persona_sprite"]}.png" style="width:46px; padding:0; "> 
+                                        <br>
+                                        ${initial}
+                                    </div>
+                                    <div class="col-md-8" style="padding-top:0.5em; ">
+                                        <span style="font-size:1.5em" id="quick_emoji-${persona_name}"></span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>`;
+
+        personasContainer.insertAdjacentHTML('beforeend', newHtml);
+
+        console.log(`Persona '${initial}' added to the DOM.`);
+    }
+
+    	// Adds a new persona section when added
+	function addNewPersonaSection(newPersonaOriginal, newPersonaUnderscore, currentAction, location, conversation, newSectionTitle, newSectionContent) {
+		const personasContainer = document.getElementById('personas-container');
+
+		if (!personasContainer) {
+			console.error("Parent container 'personas-container' not found.");
+			return;
+		}
+		else if(document.getElementById("current_action__" + newPersonaUnderscore)){
+			console.log("Container exists");
+			return;
+		}
+
+        // 1. Dynamically create the HTML structure for the new persona
+        const newPersonaHtml = `
+            <div class="media" id="on_screen_det_content-${newPersonaUnderscore}" style="background-color:#EEEEEE; padding:1em; padding-left:3.5em; padding-right:2em; border-radius:10px; display: none;">
+                <div class="media-left media-middle">
+                    <a href="#">
+                        <img src="/character_image/?url=assets/characters/profile/${personas[newPersonaUnderscore]["persona_sprite"]}.png" style="width:5em">
+                    </a>
+                </div>
+                <div class="media-body" style='padding-left:3em; padding-top:0.5em; padding-bottom:1em'>
+                    <div class="row">
+                        <h2 class="col-md-8" id="name__${newPersonaUnderscore}" style="margin-bottom:0.8em; font-size:1.85em; ">
+                            ${newPersonaOriginal} &nbsp;&nbsp;
+                            <a href="/replay_persona_state/${sim_code}/${step}/${newPersonaUnderscore}" style="font-size:0.6em">State Details</a>
+                        </h2>
+                    </div>
+                    <div style="">
+                        <p style="font-size:1.2em"><strong>Current Action:</strong> <br><span id="current_action__${newPersonaUnderscore}"></span></p>
+                        <p style="font-size:1.2em"><strong>Location:</strong> <br><span id="target_address__${newPersonaUnderscore}"></span></p>
+                        <p style="font-size:1.2em"><strong>Current Conversation:</strong> <br><span id="chat__${newPersonaUnderscore}"></span></p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 2. Append this new HTML structure to the personas-container
+        personasContainer.insertAdjacentHTML('beforeend', newPersonaHtml);
+
+        const personaTriggersContainer = document.getElementById('persona-triggers-container');
+        if (personaTriggersContainer) {
+            const newPersonaTriggerHtml = `
+                <div id="on_screen_det_trigger_container-${newPersonaUnderscore}" style="padding-top:1em; padding-bottom:1em; background-color:white; border-radius:10px">
+                    <a href="#on_screen_det_content-${newPersonaUnderscore}" id="on_screen_det_trigger-${newPersonaUnderscore}" class="btn" style="width:100%; text-align:left; font-size:1.2em; font-weight:500">
+                        ${newPersonaOriginal}
+                    </a>
+                </div>
+            `;
+            personaTriggersContainer.insertAdjacentHTML('beforeend', newPersonaTriggerHtml);
+        }
+
+
+        // 3. Attach the click event listener to the newly created persona's trigger
+        $(`#on_screen_det_trigger-${newPersonaUnderscore}`).click(function() {
+            // Hide all existing content divs
+            $('#on_screen_det_content-init').css({ 'display': 'none' });
+
+            // Get all persona content divs and trigger containers for iteration
+            const allPersonaContentDivs = document.querySelectorAll('[id^="on_screen_det_content-"]');
+            const allPersonaTriggerContainers = document.querySelectorAll('[id^="on_screen_det_trigger_container-"]');
+            const allPersonaTriggers = document.querySelectorAll('[id^="on_screen_det_trigger-"]');
+
+            allPersonaContentDivs.forEach(div => {
+                div.style.display = 'none';
+            });
+
+            allPersonaTriggerContainers.forEach(container => {
+                container.style.backgroundColor = 'white';
+                container.style.borderRadius = '10px';
+            });
+
+            allPersonaTriggers.forEach(trigger => {
+                trigger.style.fontWeight = '500';
+            });
+
+            // Set styles for the newly selected persona
+            $(`#on_screen_det_trigger-${newPersonaUnderscore}`).css({
+                'font-weight': '900',
+            });
+            $(`#on_screen_det_trigger_container-${newPersonaUnderscore}`).css({
+                'background-color': '#ABFF84',
+                'border-radius': '10px'
+            });
+            $(`#on_screen_det_content-${newPersonaUnderscore}`).css({
+                'display': 'block',
+            });
+
+            document.getElementById("temp_focus").innerHTML = newPersonaUnderscore;
+        });
+	}
+
+    
+	function symmetricDifference(arr1, arr2) {
+        for(let i = 0; i < arr1.length; i++){
+            arr1[i] = arr1[i].replaceAll(" ", "_")
+        }
+
+        
+		const set1 = new Set(arr1);
+		const set2 = new Set(arr2);
+		const result = new Set();
+
+		// Add elements from set1 that are not in set2
+		for (const item of set1) {
+			if (!set2.has(item)) {
+			result.add(item);
+			}
+		}
+
+		// Add elements from set2 that are not in set1
+		for (const item of set2) {
+			if (!set1.has(item)) {
+			result.add(item);
+			}
+		}
+
+		return Array.from(result); // Convert the Set back to an array
+	}
+    
+    function addPersonaToSim(persona_name, init_pos, game) {
+        console.log("Persona Added", name)
+        let start_pos = [
+            init_pos[0] * tile_width + tile_width / 2,
+            init_pos[1] * tile_width + tile_width
+        ];
+
+        let persona_sprite = null;
+        if(!(has_sprit_maps.includes(persona_name))){
+
+            let role_split = persona_name.split("_");
+
+            const num = role_split.pop();
+            const role = role_split.join("_");
+            persona_sprite = `${role}_${(parseInt(num) % role_amount[role])+ 1}`;  
+        }
+        else{
+            persona_sprite = persona_name;
+        }
+        const new_sprite = game.physics.add
+            // Use frame 0 as the idle start for each persona
+            .sprite(start_pos[0], start_pos[1], persona_sprite, 0)
+            .setSize(30, 30)
+            .setOffset(0, 10)
+            .setOrigin(0.5, 1);
+        
+
+        // Optional scaling
+        new_sprite.displayWidth = 30;
+        new_sprite.scaleY = new_sprite.scaleX;
+
+        // Store references
+        personas[persona_name] = new_sprite;
+        personas[persona_name]["persona_sprite"] = persona_sprite;
+
+        speech_bubbles[persona_name] = this.add
+            .image(new_sprite.body.x, new_sprite.body.y - 30, 'speech_bubble')
+            .setDepth(3);
+        speech_bubbles[persona_name].displayWidth = 130;
+        speech_bubbles[persona_name].displayHeight = 58;
+
+        pronunciatios[persona_name] = this.add.text(
+            new_sprite.body.x - 6,
+            new_sprite.body.y - 42,
+            "⏳",
+            {
+                font: "24px monospace",
+                fill: "#000000",
+                padding: { x: 8, y: 8 },
+                border: "solid",
+                borderRadius: "10px"
+            }
+        ).setDepth(3);
+
+        if(has_sprit_maps.includes(persona_name)){
+            // Use the sprite that was save in the persona object
+            const anims = this.anims;
+
+            anims.create({
+                key: persona_name + "-down-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 0, end: 2 }),
+                frameRate: 6,
+                repeat: -1
+            });
+
+            anims.create({
+                key: persona_name + "-left-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 3, end: 5 }),
+                frameRate: 6,
+                repeat: -1
+            });
+
+            anims.create({
+                key: persona_name + "-right-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 6, end: 8 }),
+                frameRate: 6,
+                repeat: -1
+            });
+
+            anims.create({
+                key: persona_name + "-up-walk",
+                frames: anims.generateFrameNumbers(personas[persona_name]["persona_sprite"], { start: 9, end: 11 }),
+                frameRate: 6,
+                repeat: -1
+            });
+        }
+
+        console.log("Spawning", persona_name, "at", start_pos);
+
+        addPersonaToDOM(persona_name)
+        addNewPersonaSection(persona_name.replaceAll("_", " "), persona_name);
+    }
+    
+
+
+</script>

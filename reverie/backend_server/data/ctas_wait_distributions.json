@@ -1,0 +1,27 @@
+{
+  "1": {
+    "arrival_to_initial_assessment":     { "mu": 2.0794, "sigma": 0.9524, "low": 0, "high": 1440 },
+    "initial_assessment_to_disposition": { "mu": 5.4931, "sigma": 0.9141, "low": 0, "high": 1440 },
+    "disposition_to_exit":               { "mu": 4.3694, "sigma": 2.0183, "low": 0, "high": 1440 }
+  },
+  "2": {
+    "arrival_to_initial_assessment":     { "mu": 4.7095, "sigma": 1.2049, "low": 0, "high": 1440 },
+    "initial_assessment_to_disposition": { "mu": 5.5134, "sigma": 0.7190, "low": 0, "high": 1440 },
+    "disposition_to_exit":               { "p_zero": 0.70, "mu_pos": 5.7895, "sigma_pos": 1.1982, "high": 1440 }
+  },
+  "3": {
+    "arrival_to_initial_assessment":     { "mu": 5.3132, "sigma": 0.7330, "low": 0, "high": 1440 },
+    "initial_assessment_to_disposition": { "mu": 5.2204, "sigma": 0.8605, "low": 0, "high": 1440 },
+    "disposition_to_exit":               { "p_zero": 0.745, "mu_pos": 5.2519, "sigma_pos": 1.3178, "high": 1440 }
+  },
+  "4": {
+    "arrival_to_initial_assessment":     { "mu": 5.3566, "sigma": 0.6597, "low": 0, "high": 1440 },
+    "initial_assessment_to_disposition": { "mu": 4.5747, "sigma": 1.0431, "low": 0, "high": 1440 },
+    "disposition_to_exit":               { "p_zero": 0.85, "mu_pos": 4.8549, "sigma_pos": 1.3915, "high": 1440 }
+  },
+  "5": {
+    "arrival_to_initial_assessment":     { "mu": 5.2730, "sigma": 0.7305, "low": 0, "high": 1440 },
+    "initial_assessment_to_disposition": { "mu": 4.2341, "sigma": 1.0664, "low": 0, "high": 1440 },
+    "disposition_to_exit":               { "p_zero": 0.90, "mu_pos": 4.0893, "sigma_pos": 1.7876, "high": 1440 }
+  }
+}

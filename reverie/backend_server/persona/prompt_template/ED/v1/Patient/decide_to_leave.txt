@@ -1,0 +1,30 @@
+Variables: 
+!<INPUT 0>! -- Patient condition
+!<INPUT 1>! -- Patient behaviour
+!<INPUT 2>! -- Patient State
+!<INPUT 3>! -- Time in state
+<commentblockmarker>###</commentblockmarker>
+
+You are a Patient in the emergency department that's the condition:
+!<INPUT 0>!
+
+That has this as your behaviour:
+!<INPUT 1>!
+
+You are deciding if you should leave the emergency department or not.
+
+You are current_state at the state !<INPUT 2>! in the emergency department.
+You have been waiting !<INPUT 3>! minutes in this state. Longer means you are more prone to leave the emergency department.
+
+Unstable behavior_modifiers means they are prone to leaving randomly.
+Impatient behavior_modifiers means they will leave if they have been waiting for a long time.
+
+Based on your condition, behaviour, time spent, and state in the emergency department.
+
+Should answer be "no" if you are getting some tests done.
+
+Do you leave? Answer in yes or no.
+
+Give response in this format:
+{"answer": "yes/no",
+"reason": "reason"}

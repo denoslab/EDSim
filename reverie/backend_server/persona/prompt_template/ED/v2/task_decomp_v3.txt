@@ -1,0 +1,45 @@
+task_decomp_v2.txt
+
+Variables: 
+!<INPUT 0>! -- Commonset
+!<INPUT 1>! -- Surrounding schedule description
+!<INPUT 2>! -- Persona first name
+!<INPUT 3>! -- Persona first name
+!<INPUT 4>! -- Current action
+!<INPUT 5>! -- curr time range
+!<INPUT 6>! -- Current action duration in min
+!<INPUT 7>! -- Persona first names
+
+<commentblockmarker>###</commentblockmarker>
+Describe subtasks in 5 min increments. 
+---
+Name: Kelly Bronson
+Age: 35
+Backstory: Dr. Patel always wanted to be an emergency physician, and now she works in a busy urban hospital. During her shifts, she dedicates herself to her patients, but on her days off, she enjoys hiking and spending time with her family. She is very efficient and compassionate, and excels in high-pressure situations.
+Personality: calm, decisive, empathetic
+Location: Dr. Patel is in an emergency department that has the following areas: {major injurie zone, Waiting Room, Triage Room, Hallway, Operating Room, minor injurie zone}.
+Currently: Dr. Patel is an emergency physician. She treats patients in the emergency department but also completes paperwork and consultations. She is current_state working a 12-hour shift at the hospital.
+Daily plan requirement: Dr. Patel is planning to treat patients during the morning and complete patient documentation in the afternoon.
+
+Today is Tuesday March 5. From 06:00am ~07:00am, Dr. Patel is planning on reviewing patient charts, from 07:00am ~ 11:00am, Dr. Patel is planning on treating patients, and from 11:00am ~ 12:00pm, Dr. Patel is planning on taking a short break.
+In 5 min increments, list the subtasks Dr. Patel does when Dr. Patel is treating patients from 07:00am ~ 11:00am (total duration in minutes: 240):
+1) Dr. Patel is reviewing incoming patient information. (duration in minutes: 15, minutes left: 225)
+2) Dr. Patel is examining the first patient on the bed. (duration in minutes: 20, minutes left: 205)
+3) Dr. Patel is ordering diagnostic tests. (duration in minutes: 10, minutes left: 195)
+4) Dr. Patel is reviewing test results on the computer. (duration in minutes: 15, minutes left: 180)
+5) Dr. Patel is administering medication using medical equipment. (duration in minutes: 15, minutes left: 165)
+6) Dr. Patel is documenting patient care on the computer. (duration in minutes: 15, minutes left: 150)
+7) Dr. Patel is examining the second patient on the operating table. (duration in minutes: 20, minutes left: 130)
+8) Dr. Patel is consulting with a specialist. (duration in minutes: 15, minutes left: 115)
+9) Dr. Patel is preparing treatment plan. (duration in minutes: 20, minutes left: 95)
+12) Dr. Patel is examining the third patient in wheelchair. (duration in minutes: 20, minutes left: 65)
+13) Dr. Patel is updating patient charts on the computer. (duration in minutes: 15, minutes left: 50)
+14) Dr. Patel is discussing care plan with nursing staff. (duration in minutes: 15, minutes left: 35)
+15) Dr. Patel is examining the fourth patient on the bed. (duration in minutes: 20, minutes left: 15)
+16) Dr. Patel is reviewing final test results on the computer. (duration in minutes: 10, minutes left: 5)
+17) Dr. Patel is updating discharge instructions. (duration in minutes: 5, minutes left: 0)
+---
+!<INPUT 0>!
+!<INPUT 1>!
+In 5 min increments, list the subtasks !<INPUT 2>! does when !<INPUT 3>! is !<INPUT 4>! from !<INPUT 5>! (total duration in minutes !<INPUT 6>!): 
+1) !<INPUT 7>! is

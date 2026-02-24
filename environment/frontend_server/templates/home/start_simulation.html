@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Title Screen -->
+<div style="text-align:center; margin-top:5vh;">
+  <h1 style="font-size:3em; font-weight:bold; color:#007BFF; margin-bottom:0.5em;">
+    Welcome to the ED Simulation
+  </h1>
+  <p style="font-size:1.2em; color:#555;">
+    Configure the simulation parameters and start the simulation.
+  </p>
+</div>
+
+<!-- Configuration Panel -->
+<div id="config-panel" style="max-width: 700px; margin: 40px auto; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: white;">
+  <h2 style="margin-bottom:20px; text-align: center;">Simulation Settings</h2>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+
+    <label>Fill Injuries (% of beds)
+      <input id="fill_injuries" type="number" step="0.1" min="0" max="1" value="1.0">
+    </label>
+
+    <label>Preload Waiting Room Patients
+      <input id="preload_waiting_room_patients" type="number" value="0" min="0">
+    </label>
+
+    <label>Doctors
+      <input id="doctor_starting_amount" type="number" value="10">
+    </label>
+
+    <label>Triage Nurses
+      <input id="triage_starting_amount" type="number" value="2">
+    </label>
+
+    <label>Bedside Nurses
+      <input id="bedside_starting_amount" type="number" value="20">
+    </label>
+
+    <label>Patient Rate Modifier
+      <input id="patient_rate_modifier" type="number" step="0.1" value="0.5">
+    </label>
+
+    <label>Priority Factor
+      <input id="priority_factor" type="number" value="10">
+    </label>
+
+    <label>Testing Time (min)
+      <input id="testing_time" type="number" value="20">
+    </label>
+
+    <label>Testing Result Time (min)
+      <input id="testing_result_time" type="number" value="20">
+    </label>
+
+    <label>Add Patient Threshold
+      <input id="add_patient_threshold" type="number" value="0">
+    </label>
+
+    <label>Random Seed
+      <input id="seed" type="number" value="null">
+    </label>
+
+    <label>Patient Walkout Probability
+      <input id="patient_walkout_probability" type="number" step="0.01" value="0.0">
+    </label>
+
+    <label>Patient Walkout Check (min)
+      <input id="patient_walkout_check_minutes" type="number" value="20">
+    </label>
+
+    <label>Patient Post-Discharge Linger Probability
+      <input id="patient_post_discharge_linger_probability" type="number" step="0.01" value="0.0">
+    </label>
+
+    <label>Patient Post-Discharge Linger (min)
+      <input id="patient_post_discharge_linger_minutes" type="number" value="30">
+    </label>
+
+    <label>Simulate Hospital Admission
+      <select id="simulate_hospital_admission">
+        <option value="false" selected>No</option>
+        <option value="true">Yes</option>
+      </select>
+    </label>
+
+    <label>Admission Boarding Min (min)
+      <input id="admission_boarding_minutes_min" type="number" value="60">
+    </label>
+
+    <label>Admission Boarding Max (min)
+      <input id="admission_boarding_minutes_max" type="number" value="480">
+    </label>
+
+  </div>
+</div>
+
+<!-- Buttons -->
+<div style="display:flex; flex-direction:column; align-items:center; margin-top:30px;">
+
+  <button id="start-btn"
+    style="padding:20px 50px; font-size:22px; border-radius:10px;
+           background:#007BFF; color:white; border:none; cursor:pointer;">
+    Start Simulation
+  </button>
+
+  <button
+    id="view-data-btn"
+    onclick="window.location.href='/data_visualization';"
+    style="margin-top:20px; margin-bottom: 30px; padding:15px 40px; font-size:18px; border-radius:10px;
+           background:#FFA500; color:white; border:none; cursor:pointer;">
+    View Data
+  </button>
+
+  <button
+    id="live-dashboard-btn"
+    onclick="window.location.href='/live_dashboard';"
+    style="margin-top:-15px; margin-bottom: 30px; padding:15px 40px; font-size:18px; border-radius:10px;
+           background:#17a2b8; color:white; border:none; cursor:pointer;">
+    Live Dashboard
+  </button>
+
+  <!-- Loading Spinner -->
+  <div id="loading" style="display: none; margin-top: 20px; margin-bottom: 20px; text-align: center;">
+    <div style="
+      border:6px solid #f3f3f3;
+      border-top:6px solid #007BFF;
+      border-radius:50%;
+      width:50px;
+      height:50px;
+      animation:spin 1s linear infinite;
+      margin:0 auto;
+    "></div>
+    <p style="margin-top:10px;">Starting Simulation...</p>
+  </div>
+</div>
+
+<style>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+label {
+  display:flex;
+  flex-direction:column;
+  font-size:0.9em;
+}
+input, select {
+  padding: 6px;
+  font-size: 1em;
+  border: 1px solid #787878;
+  border-radius: 8px;
+  box-sizing: border-box;
+  outline: none;
+}
+</style>
+
+<script>
+async function saveSettings() {
+  const payload = {
+    fill_injuries: Number(document.getElementById("fill_injuries").value),
+    preload_waiting_room_patients: Number(document.getElementById("preload_waiting_room_patients").value),
+    doctor_starting_amount: Number(document.getElementById("doctor_starting_amount").value),
+    triage_starting_amount: Number(document.getElementById("triage_starting_amount").value),
+    bedside_starting_amount: Number(document.getElementById("bedside_starting_amount").value),
+    patient_rate_modifier: Number(document.getElementById("patient_rate_modifier").value),
+    priority_factor: Number(document.getElementById("priority_factor").value),
+    testing_time: Number(document.getElementById("testing_time").value),
+    testing_result_time: Number(document.getElementById("testing_result_time").value),
+    add_patient_threshold: Number(document.getElementById("add_patient_threshold").value),
+    seed: Number(document.getElementById("seed").value),
+    patient_walkout_probability: Number(document.getElementById("patient_walkout_probability").value),
+    patient_walkout_check_minutes: Number(document.getElementById("patient_walkout_check_minutes").value),
+    patient_post_discharge_linger_probability: Number(document.getElementById("patient_post_discharge_linger_probability").value),
+    patient_post_discharge_linger_minutes: Number(document.getElementById("patient_post_discharge_linger_minutes").value),
+    simulate_hospital_admission: document.getElementById("simulate_hospital_admission").value === "true",
+    admission_boarding_minutes_min: Number(document.getElementById("admission_boarding_minutes_min").value),
+    admission_boarding_minutes_max: Number(document.getElementById("admission_boarding_minutes_max").value),
+  };
+
+  const res = await fetch("/save_simulation_settings/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  if (!data.ok) {
+    throw new Error(data.error || "Failed to save settings");
+  }
+}
+
+document.getElementById("start-btn").onclick = async function () {
+  const startBtn = this;
+  const viewBtn = document.getElementById("view-data-btn");
+  const configPanel = document.getElementById("config-panel");
+  const loading = document.getElementById("loading");
+
+  startBtn.style.display = "none";
+  viewBtn.style.display = "none";
+  configPanel.style.display = "none";
+  loading.style.display = "block";
+
+  try {
+    await saveSettings();
+
+    const res = await fetch("/start_backend/ed_sim_n5/curr_sim/", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      localStorage.setItem("curr_sim_pid", data.ok);
+
+      window.location.href = "/simulator_home";
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (err) {
+    alert(err.message || err);
+    startBtn.style.display = "inline-block";
+    viewBtn.style.display = "inline-block";
+    loading.style.display = "none";
+  }
+};
+</script>
+
+{% endblock %}

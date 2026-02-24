@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block content %}
+<br>
+<br>
+<div>
+    <div id="game-container" style="text-align: center"></div>
+
+    <div style="width:55%; margin: 0 auto; margin-top:4.5em">
+        <h3 style="margin-bottom:-0.5em; font-size:1.5em">Current Time:</h3>
+        <div class="row">
+            <div class="col-md-8" id="game-time" style="">
+                <h2><span id="game-time-content"></span></h2> 
+            </div>
+            <div class="col-md-4">
+
+                <h2 style="text-align: right; {% if mode == 'simulate' %} display: none {% endif %}">
+                    <button id="play_button" type="button" class="btn btn-default">
+                        <strong style=" font-size:1.2em"><i class="glyphicon glyphicon-play"></i> &nbsp;Play</strong>
+                    </button>
+
+                    <button id="pause_button" type="button" class="btn btn-default">
+                        <strong style=" font-size:1.2em"><i class="glyphicon glyphicon-pause"></i> &nbsp;Pause</strong>
+                    </button>
+
+                </h2>
+
+            </div>
+
+            <div id="sim-control"
+                 style="display: flex; align-items: center; gap: 10px; margin: 20px 0;">
+
+                <input id="sim-command-input"
+                       type="text"
+                       placeholder="Enter command"
+                       style="flex:1; padding:10px 15px; border:1px solid #ccc; border-radius:8px; font-size:16px;"
+                       onfocus="this.style.borderColor='#007BFF'"
+                       onblur="this.style.borderColor='#ccc'">
+
+                <button id="sim-send-btn"
+                        style="padding: 10px 20px; background-color: #007BFF; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                    Send
+                </button>
+
+                <!-- Help button -->
+                <div style="position: relative; display: flex; align-items: center;">
+                    <button id="sim-help-btn"
+                            style="background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 50%; width: 36px; height: 36px; font-weight: bold; cursor: pointer;"
+                            onclick="document.getElementById('sim-help-overlay').style.display = 'block';">
+                        ?
+                    </button>
+                </div>
+
+                <!-- Help Overlay -->
+                <div id="sim-help-overlay" 
+                     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                            background: rgba(0,0,0,0.4); z-index: 1000;">
+
+                    <!-- Popup card -->
+                    <div id="sim-help-popup" 
+                         style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%);
+                                width:600px; max-width:90%; padding:25px; background:#fff; border-radius:10px;
+                                box-shadow:0 6px 20px rgba(0,0,0,0.3); font-size:14px; max-height:80vh; 
+                                overflow-y:auto;">
+
+                        <span style="position:absolute; top:10px; right:15px; font-size:18px; font-weight:bold; cursor:pointer;"
+                              onclick="document.getElementById('sim-help-overlay').style.display='none'">&times;</span>
+
+                        <ul style="padding-left:20px;margin:5px 0;">
+                            <h3 style="text-align: center;"><b>Available Commands</b></h3>
+                            <li><b>Run &lt;steps&gt;</b> — Run the simulation for a number of steps.</li>
+                            <li><b>F</b>, <b>Fin</b>, <b>Finish</b>, <b>Save and Finish</b> — Save the simulation and exit.</li>
+                            <li><b>Save</b> — Save the current simulation state.</li>
+                            <li><b>Exit</b> — Exit and remove the simulation folder.</li>
+                            <li><b>Start path tester mode</b> — Start path tester mode (resets simulation folder).</li>
+                            <li><b>Print current time</b> — Show current simulation time and step count.</li>
+                            <li><b>Print persona schedule</b> — Show a persona’s daily schedule summary.</li>
+                            <li><b>Print all persona schedule</b> — Show schedules for all personas.</li>
+                            <li><b>Print hourly org persona schedule</b> — Show hourly organized schedule.</li>
+                            <li><b>Print persona current tile</b> — Show a persona’s current tile.</li>
+                            <li><b>Print persona chatting with buffer</b> — Show active chat buffers.</li>
+                            <li><b>Print persona associative memory (event)</b> — Show event memories.</li>
+                            <li><b>Print persona associative memory (thought)</b> — Show thought memories.</li>
+                            <li><b>Print persona associative memory (chat)</b> — Show chat memories.</li>
+                            <li><b>Print persona spatial memory</b> — Print spatial memory tree.</li>
+                            <li><b>Print tile event</b> — Show events on a tile.</li>
+                            <li><b>Print tile details</b> — Show full tile details.</li>
+                            <li><b>Call -- analysis</b> — Open analysis conversation for a persona.</li>
+                            <li><b>Call -- load history</b> — Load persona conversation history.</li>
+                        </ul>
+
+                        <button style="margin-top: 10px; padding: 5px 10px; border:none; background: #007BFF; color: white; border-radius: 5px; cursor: pointer;" 
+                                onclick="document.getElementById('sim-help-overlay').style.display='none'">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sim-terminal" style="background-color: #f9f9f9;color: #333;padding: 15px;margin-top: 1em;height: 200px;overflow-y: auto;border: 1px solid #ddd;border-radius: 10px;font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;font-size: 14px;line-height: 1.5;box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                <strong>Simulation Output</strong>
+            </div>
+
+            <!-- Buttons -->
+			<div style="display: flex; justify-content: center; margin-top: 30px; gap: 10px;">
+
+                <button
+                    id="end-sim-btn"
+                    style="margin-top: 20px; padding: 15px 30px; font-size: 18px; border-radius: 10px;
+                        background:#dc3545; color:white; border: none; cursor: pointer; transition: 0.2s;">
+                    Save & End Simulation
+                </button>
+
+                <button
+                    id="force-shutdown-btn"
+                    style="margin-top: 20px; padding: 15px 30px; font-size: 18px; border-radius: 10px;
+                        background:#6a6a6a; color:white; border: none; cursor: pointer; transition: 0.2s;">
+                    Force Shutdown
+                </button>
+            
+                <button
+                    onclick="window.location.href='/data_visualization';"
+                    style="margin-top: 20px; padding: 15px 30px; font-size: 18px; border-radius: 10px;
+                        background:#FFA500; color:white; border: none; cursor: pointer; transition: 0.2s;">
+                    View Data
+                </button>
+
+                <button
+                    onclick="window.location.href='/live_dashboard';"
+                    style="margin-top: 20px; padding: 15px 30px; font-size: 18px; border-radius: 10px;
+                        background:#17a2b8; color:white; border: none; cursor: pointer; transition: 0.2s;">
+                    Live Dashboard
+                </button>
+
+                <button
+                    id="start-sim-btn"
+                    onclick="window.location.href='/start_simulation';"
+                    style="margin-top: 20px; padding: 15px 30px; font-size: 18px; border-radius: 10px;
+                        background:#28a745; color:white; border: none; cursor: pointer; display: none;">
+                    Start New Simulation
+                </button>
+			</div>
+
+        </div>
+
+        <br>
+		<hr style="border-color:#999999">
+		<br>
+		<div id="personas-container">
+			<!-- {% for p_name, p_name_os in persona_names %}
+			<div class="media" style="background-color:#EEEEEE; padding:1em; padding-left:3.5em; padding-right:2em; border-radius:10px">
+			  <div class="media-left media-middle">
+			    <a href="#">
+				  {% with image_path='assets/characters/profile/'|add:p_name_os|add:'.png' %}
+				  <img class="media-object" src="{% static image_path %}" style="width:5em">
+				  {% endwith %}
+				</a>
+			  </div>
+			  <div class="media-body" style='padding-left:3em; padding-top:0.5em; padding-bottom:1em'>
+			  	<div class="row">
+			    	<h2 class="col-md-8" id="name__{{ p_name_os }}" style="margin-bottom:0.8em; font-size:1.85em; ">
+			    		{{p_name}} &nbsp;&nbsp;
+			    		<a href="{% url 'replay_persona_state' sim_code step p_name_os %}" style="font-size:0.6em">State Details</a>
+			    	</h2>
+			    </div>
+			    <div style="">
+					  <p style="font-size:1.2em"><strong>Current Action:</strong> <br><span id="current_action__{{ p_name_os }}"></span></p>
+					  <p style="font-size:1.2em"><strong>Location:</strong> <br><span id="target_address__{{ p_name_os }}"></span></p>
+					  <p style="font-size:1.2em"><strong>Current Conversation:</strong> <br><span id="chat__{{ p_name_os }}"></span></p>
+					</div>
+			  </div>
+			</div>	
+			<br>
+		{% endfor %} -->
+		</div>	
+	</div>
+</div>
+
+
+<div style="padding-bottom:15em"> </div>
+
+
+<!-- partial -->
+<script src='https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.js'></script>
+
+<script>
+    const sendBtn = document.getElementById('sim-send-btn');
+    const inputEl = document.getElementById('sim-command-input');
+    const term = document.getElementById('sim-terminal');
+    let lastId = 0;
+
+    // Handle spacebar input correctly
+    inputEl.addEventListener('keydown', function(e) {
+        if (e.key === ' ' || e.code === 'Space') {
+            e.preventDefault();
+            const start = inputEl.selectionStart;
+            const end = inputEl.selectionEnd;
+            inputEl.value = inputEl.value.slice(0, start) + ' ' + inputEl.value.slice(end);
+            inputEl.selectionStart = inputEl.selectionEnd = start + 1;
+        }
+    });
+
+    function appendLineToTerminal(line) {
+        const p = document.createElement('div');
+        p.textContent = line;
+        term.appendChild(p);
+        term.scrollTop = term.scrollHeight;
+    }
+
+    function enableStartSimulationButton() {
+        const btn = document.getElementById('start-sim-btn');
+        if (btn) btn.style.display = 'inline-block';
+    }
+
+    sendBtn.onclick = async function() {
+        const cmd = inputEl.value.trim();
+        if (!cmd) return;
+
+        appendLineToTerminal(`> ${cmd}`);
+        inputEl.value = '';
+
+        const input = cmd.toLowerCase();
+
+        if (input.startsWith('run')) {
+            appendLineToTerminal('Running Simulation...');
+        }
+
+        if (input.toLowerCase() === 'exit') {
+			appendLineToTerminal('Exited and Removed Simulation Folder.');
+            enableStartSimulationButton();
+            const endSim = document.getElementById("end-sim-btn");
+            const forceShutdown = document.getElementById("force-shutdown-btn");
+            const simCmd = document.getElementById("sim-command-input");
+            const simSend = document.getElementById("sim-send-btn");
+            const simHelp = document.getElementById("sim-help-btn");
+
+            endSim.style.display = "none";
+            forceShutdown.style.display = "none";
+            simCmd.style.display = "none";
+            simSend.style.display = "none";
+            simHelp.style.display = "none";
+		}
+
+        if (
+            input === 'f' ||
+            input === 'fin' ||
+            input === 'finish' ||
+            input === 'save and finish'
+        ) {
+            appendLineToTerminal('Save Successful. Exiting Simulation. You may start a new simulation.');
+            enableStartSimulationButton();
+            const endSim = document.getElementById("end-sim-btn");
+            const forceShutdown = document.getElementById("force-shutdown-btn");
+            const simCmd = document.getElementById("sim-command-input");
+            const simSend = document.getElementById("sim-send-btn");
+            const simHelp = document.getElementById("sim-help-btn");
+
+            endSim.style.display = "none";
+            forceShutdown.style.display = "none";
+            simCmd.style.display = "none";
+            simSend.style.display = "none";
+            simHelp.style.display = "none";
+        }
+
+        const res = await fetch('/send_sim_command/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ command: cmd })
+        });
+
+        const data = await res.json();
+        if (!data.ok) {
+            appendLineToTerminal(`Error: ${JSON.stringify(data)}`);
+        }
+    };
+
+    const endSimBtn = document.getElementById('end-sim-btn');
+        endSimBtn.onclick = function() {
+            inputEl.value = 'fin';
+            sendBtn.click();
+        };
+
+    async function pollOutputs() {
+        const res = await fetch('/get_sim_output/?since_id=' + lastId);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.outputs && data.outputs.length) {
+            data.outputs.forEach(o => {
+                appendLineToTerminal(`${o.command}`);
+                appendLineToTerminal(o.outputs);
+                lastId = Math.max(lastId, parseInt(o.id));
+            });
+        }
+    }
+
+    // setInterval(pollOutputs, 1000);
+</script>
+
+<script>
+    const overlay = document.getElementById('sim-help-overlay');
+    const popup = document.getElementById('sim-help-popup');
+
+    overlay.addEventListener('click', (e) => {
+        if (!popup.contains(e.target)) {
+            overlay.style.display = 'none';
+        }
+    });
+</script>
+
+<script>
+const forceShutdownBtn = document.getElementById('force-shutdown-btn');
+
+forceShutdownBtn.onclick = async () => {
+    const pid = localStorage.getItem("curr_sim_pid");
+
+    const res = await fetch('/force_shutdown/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pid })
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+        appendLineToTerminal("Simulation process terminated.");
+        localStorage.removeItem("curr_sim_pid");
+        enableStartSimulationButton();
+    } else {
+        appendLineToTerminal(data.error);
+    }
+
+    const endSim = document.getElementById("end-sim-btn");
+    const forceShutdown = document.getElementById("force-shutdown-btn");
+    const simCmd = document.getElementById("sim-command-input");
+    const simSend = document.getElementById("sim-send-btn");
+    const simHelp = document.getElementById("sim-help-btn");
+
+    endSim.style.display = "none";
+    forceShutdown.style.display = "none";
+    simCmd.style.display = "none";
+    simSend.style.display = "none";
+    simHelp.style.display = "none";
+};
+</script>
+
+{% include 'home/main_script.html' %}
+{% endblock content %}

@@ -1,0 +1,674 @@
+{% load staticfiles %}
+
+<div id="persona_name_list" style="display:none">{{persona_name_str}}</div>
+<!-- <div id="maze_width" style="display:none">{{maze_width}}</div>
+ <div id="maze_height" style="display:none">{{maze_height}}</div>
+ -->
+<div id="persona_init_pos" style="display:none">
+	{% for i in persona_init_pos %}
+		<span>{{i.0}},{{i.1}},{{i.2}}</span>
+	{% endfor %}
+</div>
+
+<script type="text/javascript">
+	/*
+	  Main resources: 
+	  https://www.youtube.com/watch?v=cKIG1lKwLeo&t=401s&ab_channel=HongLy
+	  For the ground zero code, see the exported files from here: 
+	  https://codepen.io/mikewesthad/pen/BVeoYP?editors=1111 
+
+	  Also worth taking a look: 
+	  https://www.youtube.com/watch?v=fdXcD9X4NrQ&ab_channel=MorganPage
+	  and 
+	  https://www.youtube.com/watch?v=MR2CvWxOEsw&ab_channel=MattWilber
+	 */
+
+
+	// ###########################################################################
+	// PREAMBLE
+	// ###########################################################################
+
+	// <step> -- one full loop around all three phases determined by <phase> is 
+	// a step. We use this to link the steps in the backend. 
+	let step = {{step}};
+	// Name of simulation code
+	let sim_code = "{{sim_code}}"
+	// Either simulation or replay mode
+	let mode = "{{mode}}"
+	console.log(mode)
+	let new_step = true;
+	// gets the size in a 2d array
+ 	let maze_size = {{maze_size}};
+	console.log(maze_size)
+
+	let spans = document.getElementById('persona_init_pos').getElementsByTagName('span');
+	let persona_names = {};
+	for(var i = 0, l = spans.length; i < l; i++){
+		let x = spans[i].innerText.split(",");
+		persona_names[x[0]] = [parseInt(x[1]), parseInt(x[2])]
+	}
+
+	// Phaser 3.0 global settings. 
+	// Configuration meant to be passed to the main Phaser game instance. 
+
+	fps = 10;
+
+	if(mode == "replay"){
+		fps = 30;
+	}
+	const config = {
+	  fps: {
+		target: fps,
+		forceSetTimeOut: true
+		},
+
+	  type: Phaser.AUTO,
+	  // Sets the size of the canvas based on map size
+	  width: (64 * maze_size[0]),
+	  height: (64 * maze_size[1]),	
+	  parent: "game-container",
+	  pixelArt: true,
+	  physics: {
+	    default: "arcade",
+	    arcade: {
+	      gravity: { y: 0 } } },
+	  scene: {
+	    preload: preload,
+	    create: create,
+	    update: update },
+	  // Make sure the map is a good size on the webpage for most sizes of layouts
+	  scale: {zoom: 13 / maze_size[0]} 
+	};
+
+	// Creating the game instance and setting up the main Phaser variables that  
+	// will be used in it. 
+	const game = new Phaser.Game(config);
+	let cursors;
+	let player;
+	let showDebug = false;
+
+	// Persona related variables. This should have the name of the persona as its 
+	// keys, and the instances of the Persona class as the values.
+	var spawn_tile_loc = {};
+	// for (var i = 0; i < persona_names.length; i++) { 
+	// 	spawn_tile_loc[persona_names[i]] = [0, 0]
+	// }
+
+	for (var key in persona_names){
+		spawn_tile_loc[key] = persona_names[key] ;
+	}
+	console.log(spawn_tile_loc);
+
+	var personas = {};
+	var pronunciatios = {};
+	let anims_direction;
+	let pre_anims_direction;
+	let pre_anims_direction_dict = {};
+
+	let curr_maze = "ed_map";
+
+	// <tile_width> is the width of one individual tile (tiles are square)
+	let tile_width = 32;
+	// Important: tile_width % movement_speed has to be 0. 
+	// <movement_speed> determines how fast we move at each upate cylce. 
+	let movement_speed = 32; 
+
+	// <timer_max> determines how frequently our update function will query the 
+	// frontend server. If it's higher, we wait longer cycles. 
+	let timer_max = 20;
+	let timer = timer_max;
+
+	// <phase> -- there are three phases: "process," "update," and "execute."
+	let phase = "update"; // or "update" or "execute"
+
+	// Variables for storing movements that are sent from the backend server.
+	let execute_movement;
+	let execute_count_max = tile_width/movement_speed;
+	let execute_count = execute_count_max;
+	let movement_target = {};
+	
+
+	// ###########################################################################
+	// ENGINE
+	// ###########################################################################
+
+	// Joon: Phaser 3.0 is oriented around "scenes" -- recall how Pokemon plays: 
+	//       there is the outdoor space, and then there is the indoor space; when
+	//       you go inside, you transition to a new "scene" and the outdoor space
+	//       basically disappears. 
+	//       A scene in Phaser has four key methods that are called at different
+	//       stages of rendering for different purposes. They are: 
+	//       init() -> preload() -> create() -> update()
+	//         init() is called only once at the very beginning. This is the 
+	//           initialization function in case that is needed. 
+	//         preload() is called once and preloads any of the assets
+	//         create() is also called once after preloading... creates sprites 
+	//           and actually displays stuff
+	//         update() is called on each frame during the game play 
+
+	function preload() {  
+	  // Loading the necessary images (e.g., the background image, character 
+	  // sprites). 
+
+	  // Joon: for load.image, the first parameter is simply the key value that
+	  //       you are passing in. The second parameter should be pointed to the
+	  //       png file that contains the tileset. 
+	  //       Also IMPORTANT: when you create a tileset in Tiled, always be  
+	  //       sure to check the "embedded" option. 
+
+	//   Macayla: These are the tilesets that we added to our Tiled map:
+	  this.load.image("blocks_2", "{% static 'assets/the_ed/visuals/map_assets/blocks/blocks_2.png' %}");
+	  this.load.image("blocks_3", "{% static 'assets/the_ed/visuals/map_assets/blocks/blocks_3.png' %}");
+	  this.load.image("atlas_32x", "{% static 'assets/the_ed/visuals/map_assets/blocks/atlas_32x.png' %}");
+	  this.load.image("shop-and-hospital", "{% static 'assets/the_ed/visuals/map_assets/blocks/shop-and-hospital.png' %}");
+	  this.load.image("tileset_B", "{% static 'assets/the_ed/visuals/map_assets/blocks/tileset_B.png' %}");
+
+	  // Joon: This is the export json file you get from Tiled. 
+	//   Macayla: Here is where we switch to our map
+	  // Use updated map with items removed
+	  this.load.tilemapTiledJSON("map", `/get_maze_visuals/${sim_code}/simulate/`);
+
+	  // An atlas is a way to pack multiple images together into one texture. I'm 
+	  // using it to load all the player animations (walking left, walking right, 
+	  // etc.) in one image. For more info see:
+	  // https://labs.phaser.io/view.html?src=src/animation/texture%20atlas%20animation.js
+	  // If you don't use an atlas, you can do the same thing with a spritesheet, 
+	  // see: https://labs.phaser.io/view.html?src=src/animation/single%20sprite%20sheet.js
+	  // Joon: Technically, I think this guy had the best tutorial for atlas: 
+	  //       https://www.youtube.com/watch?v=fdXcD9X4NrQ&ab_channel=MorganPage
+	  this.load.atlas("atlas", 
+	                  "https://mikewesthad.github.io/phaser-3-tilemap-blog-posts/post-1/assets/atlas/atlas.png", 
+	                  "https://mikewesthad.github.io/phaser-3-tilemap-blog-posts/post-1/assets/atlas/atlas.json");
+	}
+
+	function create() {  
+	  const map = this.make.tilemap({ key: "map" });
+	  // Joon: Logging map is really helpful for debugging here: 
+	  //       console.log(map);
+
+	  // The first parameter is the name you gave to the tileset in Tiled and then
+	  // the key of the tileset image in Phaser's cache (i.e. the name you used in
+	  // preload)
+	  // Joon: for the first parameter here, really take a look at the 
+	  //       console.log(map) output. You need to make sure that the name 
+	  //       matches.
+
+	//   Macayla: These are the tilesets that we added to our Tiled map:
+	  const blocks_2 = map.addTilesetImage("blocks_2", "blocks_2");
+	  const blocks_3 = map.addTilesetImage("blocks_3", "blocks_3");
+	  const atlas_32x = map.addTilesetImage("atlas_32x", "atlas_32x");
+	  const shop_and_hospital = map.addTilesetImage("shop-and-hospital", "shop-and-hospital");
+	  const tileset_B = map.addTilesetImage("tileset_B", "tileset_B");
+
+	//   Macayla: These are the layers that we added to our Tiled map:
+	// Object Interaction Layer,
+	// Sector Layer,
+	// Arena Layer,
+	// Spawning Blocks,
+	// Collisions,
+	// Floor,
+	// Walls,
+	// Tile Layer 1
+
+	  const objectInteractionLayer = map.createLayer("Object Interaction Layer", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+	  const sectorLayer = map.createLayer("Sector Layer", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+	  const arenaLayer = map.createLayer("Arena Layer", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+	  const spawningBlocksLayer = map.createLayer("Spawning Blocks", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+	  const collisionsLayer = map.createLayer("Collisions", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+	  const floorLayer = map.createLayer("Floor", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+	  const wallsLayer = map.createLayer("Walls", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+	  const tileLayer1 = map.createLayer("Tile Layer 1", [blocks_2, blocks_3, atlas_32x, shop_and_hospital, tileset_B], 0, 0);
+
+
+	  // Joon : This is where you want to create a custom field for the tileset
+	  //        in Tiled. Take a look at this guy's tutorial: 
+	  //        https://www.youtube.com/watch?v=MR2CvWxOEsw&ab_channel=MattWilber
+	  collisionsLayer.setCollisionByProperty({ collide: true });
+	  // By default, everything gets depth sorted on the screen in the order we 
+	  // created things. Here, we want the "Above Player" layer to sit on top of 
+	  // the player, so we explicitly give it a depth. Higher depths will sit on 
+	  // top of lower depth objects.
+	  // Collisions layer should get a negative depth since we do not want to see
+	  // it. 
+	  collisionsLayer.setDepth(-1);
+	  // foregroundL1Layer.setDepth(2);
+	  // foregroundL1Layer.setDepth(2);
+
+	  // *** SET UP CAMERA *** 
+	  // "player" is to be set as the center of mass for our "camera." We 
+	  // basically create a game character sprite as we would for our personas 
+	  // but we move it to depth -1 and let it pass through the collision map;  
+	  // that is, do not have the following line: 
+	  // this.physics.add.collider(player, collisionsLayer);
+	  // OLD NOTE: Create a sprite with physics enabled via the physics system. 
+	  // The image  used for the sprite has a bit of whitespace, so I'm using 
+	  // setSize & setOffset to control the size of the player's body.
+	  player = this.physics.add.
+	                sprite(800, 288, "atlas", "misa-front").
+	                setSize(30, 40).
+	                setOffset(0, 0);
+	  player.setDepth(-1);
+	  // Setting up the camera. 
+	  const camera = this.cameras.main;
+	  camera.startFollow(player);
+	  camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+	  cursors = this.input.keyboard.createCursorKeys();
+	  // *** ZOOM CAMERA ***
+	  // Set the zoom level of the camera
+	  camera.setZoom(2); // Adjust the zoom level as needed
+	  // *** SET UP PERSONAS *** 
+	  // We start by creating the game sprite objects. 
+	  for (let i=0; i<Object.keys(spawn_tile_loc).length; i++) { 
+	    let persona_name = Object.keys(spawn_tile_loc)[i];
+	    let start_pos = [spawn_tile_loc[persona_name][0] * tile_width + tile_width / 2, 
+	                     spawn_tile_loc[persona_name][1] * tile_width + tile_width];
+	    let new_sprite = this.physics.add
+	                         .sprite(start_pos[0], start_pos[1], "atlas", "misa-front")
+	                         .setSize(30, 40)
+	                         .setOffset(0, 32); // DEBUG 1 --- I added 32 offset on Dec 29. 
+	    // Here, we are creating the persona and its pronunciatio sprites.
+	    personas[persona_name] = new_sprite;
+	    pronunciatios[persona_name] = this.add.text(
+	                                   new_sprite.body.x - 6, 
+	                                   new_sprite.body.y - 42 - 32, // DEBUG 1 --- I added 32 offset on Dec 29. 
+	                                   "⏳", {
+	                                   font: "28px monospace", 
+	                                   fill: "#000000", 
+	                                   padding: { x: 8, y: 8}, 
+	                                   backgroundColor: "#ffffff",
+	                                   border:"solid",
+	                                   borderRadius:"10px"}).setDepth(3);
+
+		addNewPersonaSection(persona_name, persona_name.replaceAll(" ", "_"));
+	  }
+
+	  // Create the player's walking animations from the texture atlas. These are
+	  // stored in the global animation manager so any sprite can access them.
+	  const anims = this.anims;
+	  anims.create({
+	    key: "misa-left-walk",
+	    frames: anims.generateFrameNames("atlas", { prefix: "misa-left-walk.", start: 0, end: 3, zeroPad: 3 }),
+	    frameRate: 4,
+	    repeat: -1 });
+
+	  anims.create({
+	    key: "misa-right-walk",
+	    frames: anims.generateFrameNames("atlas", { prefix: "misa-right-walk.", start: 0, end: 3, zeroPad: 3 }),
+	    frameRate: 4,
+	    repeat: -1 });
+
+	  anims.create({
+	    key: "misa-front-walk",
+	    frames: anims.generateFrameNames("atlas", { prefix: "misa-front-walk.", start: 0, end: 3, zeroPad: 3 }),
+	    frameRate: 4,
+	    repeat: -1 });
+
+	  anims.create({
+	    key: "misa-back-walk",
+	    frames: anims.generateFrameNames("atlas", { prefix: "misa-back-walk.", start: 0, end: 3, zeroPad: 3 }),
+	    frameRate: 4,
+	    repeat: -1 });
+
+	}
+	async function fetchUpdatedPersonaNames() {
+		const response = await fetch(`/get_persona_names/?step=${step}&mode=${mode}`);
+		const data = response.json();
+		console.log(step)
+		console.log(data)
+		return data; // Now you can return it
+	}
+
+	function delay(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+	}
+
+	function update(time, delta) {
+		// *** SETUP PLAY AND PAUSE BUTTON *** 
+		let play_context = this;
+		function game_resume() {  
+			play_context.scene.resume();
+		}  
+		play_button.onclick = function(){
+			game_resume();
+		};
+		function game_pause() {  
+			play_context.scene.pause();
+		}  
+		pause_button.onclick = function(){
+			game_pause();
+		};
+
+	  // *** MOVE CAMERA *** 
+	  // This is where we finish up the camera setting we started in the create() 
+	  // function. We set the movement speed of the camera and wire up the keys to
+	  // map to the actual movement.
+
+	  // console.log("phase: " + phase + ", step: " + step);
+	  // *** MOVE PERSONAS ***
+	  // Moving personas take place in three distinct phases: "process," "update,"
+	  // and "execute." These phases are determined by the value of <phase>. 
+	  // Only one of the three phases is incurred in each update cycle. 
+	  if (phase == "process") {
+		// "process" takes all current locations of the personas and send them to
+		// the frontend server in a json form. Here, we first create the json 
+		// file that records all persona locations: 
+		console.log(step)
+		let data = {"step": step, 
+								"sim_code": sim_code,
+					"environment": {}}
+		for (let i=0; i<Object.keys(personas).length; i++) {
+			let persona_name = Object.keys(personas)[i];
+			data["environment"][persona_name] = {"maze": curr_maze,
+												"x": Math.ceil((personas[persona_name].body.position.x) / tile_width),
+												"y": Math.ceil((personas[persona_name].body.position.y) / tile_width)}
+		}
+
+		var json = JSON.stringify(data);
+		// We then send this to the frontend server: 
+		var retrieve_xobj = new XMLHttpRequest();
+		retrieve_xobj.overrideMimeType("application/json");
+		retrieve_xobj.open('POST', "{% url 'process_environment' %}", true);
+		retrieve_xobj.send(json);   
+		// Finally, we update the phase variable to start the "udpate" process. 
+		// Now that we sent all persona locations to the backend server, we need
+		// to wait until the backend determines what the personas will do next. 
+	
+		phase = "update";
+
+	  } 
+
+	  else if (phase == "update") { 
+	    // Update is where we * wait * for the backend server to finish 
+	    // computing about what the personas will do next given their current 
+	    // situation. 
+	    // We do this by continuously asking the backend server if it is ready. 
+	    // The backend server is ready when it returns a json that has a key-val
+	    // pair with "<move>": true.
+	    // Note that we do not want to overburden the backend too much by 
+	    // over-querying; so, we have a timer set so we only query it once every
+	    // timer_max cycles. 
+	    if (timer <= 0) {
+	      var update_xobj = new XMLHttpRequest();
+	      update_xobj.overrideMimeType("application/json");
+	      update_xobj.open('POST', "{% url 'update_environment' %}", true);
+	      update_xobj.addEventListener("load", function() {
+	        if (this.readyState === 4) {
+	          if (update_xobj.status === 200) {
+	            if (JSON.parse(update_xobj.responseText)["<step>"] == step) {
+					execute_movement = JSON.parse(update_xobj.responseText)
+					phase = "execute";
+					timer = 0;
+	            }
+				else{
+					timer = timer_max
+				}
+
+	          }
+	        }
+	      });
+	      update_xobj.send(JSON.stringify({"step": step, "sim_code": sim_code }));   
+	    }
+	    timer = timer - 1; 
+	  } 
+
+	  else { 
+	    // This is where we actually move the personas in the visual world. Each
+	    // backend computation in execute_movement moves each persona by one tile
+	    // (or some personas might not move if they choose not to). 
+	    // The execute_count_max is computed by tile_width/movement_speed, which
+	    // defines a one step sequence in this world. 
+
+	    document.getElementById("game-time-content").innerHTML = execute_movement["meta"]["curr_time"];
+
+		// Check for differences between local persona array and movement file
+		// So we can check either to add or remove a Persona
+		const symmetric_difference = symmetricDifference(Object.keys(execute_movement["persona"]), Object.keys(personas));
+		console.log("difference",symmetric_difference);
+
+		// Check for newly added personas in movement file
+
+		for (let j=0; j<symmetric_difference.length; j++) { 
+			if(!Object.keys(personas).includes(symmetric_difference[j])){
+
+				let persona_name = symmetric_difference[j];
+				let start_pos = [execute_movement["persona"][persona_name]["movement"][0] * tile_width + tile_width / 2, 
+								execute_movement["persona"][persona_name]["movement"][1] * tile_width + tile_width];
+				let new_sprite = this.physics.add
+				.sprite(start_pos[0], start_pos[1], "atlas", "misa-front")
+				.setSize(30, 40)
+				.setOffset(0, 32); // DEBUG 1 --- I added 32 offset on Dec 29. 
+				// Here, we are creating the persona and its pronunciatio sprites.
+				personas[persona_name] = new_sprite;
+				pronunciatios[persona_name] = this.add.text(
+												new_sprite.body.x - 6, 
+												new_sprite.body.y - 42 - 32, // DEBUG 1 --- I added 32 offset on Dec 29. 
+												"⏳", {
+												font: "28px monospace", 
+												fill: "#000000", 
+												padding: { x: 8, y: 8}, 
+												backgroundColor: "#ffffff",
+												border:"solid",
+												borderRadius:"10px"}).setDepth(3);
+				console.log("f:", Object.keys(personas));
+
+				addNewPersonaSection(persona_name, persona_name.replaceAll(" ", "_"));
+			}
+			// Check for any personas missing in the persona array and remove them
+			else if(!Object.keys(execute_movement["persona"]).includes(symmetric_difference[j])){
+				const curr_persona_name = symmetric_difference[j];
+				personas[curr_persona_name].destroy();
+				pronunciatios[curr_persona_name].destroy();
+				delete personas[curr_persona_name];
+				console.log("After deletion", Object.keys(personas));
+			}
+		}
+		
+
+
+	    for (let i=0; i<Object.keys(personas).length; i++) {
+	      let curr_persona_name = Object.keys(personas)[i];
+	      let curr_persona = personas[curr_persona_name];
+	      let curr_pronunciatio = pronunciatios[Object.keys(personas)[i]];
+	      if (execute_count == execute_count_max) { 
+	        let curr_x = execute_movement["persona"][curr_persona_name]["movement"][0];
+	        let curr_y = execute_movement["persona"][curr_persona_name]["movement"][1];
+	        movement_target[curr_persona_name] = [curr_x * tile_width, 
+	                                              curr_y * tile_width]; 
+
+	        let pronunciatio_content = execute_movement["persona"][curr_persona_name]["pronunciatio"];
+			if(!pronunciatio_content){
+				pronunciatio_content = "\ud83e\udd22"
+			}
+
+
+			// This regex matches either:
+			// 1. A single letter at the start of a word: (\p{L})
+			// 2. Or a full sequence of numbers: (\p{N}+)
+			let rgx = new RegExp(/(\p{L})[\p{L}]*|(\p{N}+)/, 'gu');
+
+			let matches = [...curr_persona_name.matchAll(rgx)] || [];
+
+			// Extract the captured group (either the letter or the number sequence)
+			let parts = matches.map(m => m[1] || m[2]);
+
+			let first = parts.shift() || '';
+			let last = parts.length > 0 ? parts.pop() : '';
+
+			let initials = (first + last).toUpperCase();
+
+			pronunciatios[curr_persona_name].setText(initials + ": " + pronunciatio_content);
+	      }
+
+	      if (execute_count > 0) {
+	        if (curr_persona.body.x < movement_target[curr_persona_name][0]) {
+	          curr_persona.body.x += movement_speed; 
+	          anims_direction = "r";
+	          pre_anims_direction = "r"
+	          pre_anims_direction_dict[curr_persona_name] = "r"
+	        } else if (curr_persona.body.x > movement_target[curr_persona_name][0]) {
+	          curr_persona.body.x -= movement_speed; 
+	          anims_direction = "l";
+	          pre_anims_direction = "l"
+	          pre_anims_direction_dict[curr_persona_name] = "l"
+	        } else if (curr_persona.body.y < movement_target[curr_persona_name][1]) {
+	          curr_persona.body.y += movement_speed;
+	          anims_direction = "d";
+	          pre_anims_direction = "d"
+	          pre_anims_direction_dict[curr_persona_name] = "d"
+	        } else if (curr_persona.body.y > movement_target[curr_persona_name][1]) {
+	          curr_persona.body.y -= movement_speed;
+	          anims_direction = "u";
+	          pre_anims_direction = "u"
+	          pre_anims_direction_dict[curr_persona_name] = "u"
+	        } else {
+	        	anims_direction = "";
+	        }
+
+	        curr_pronunciatio.x = curr_persona.body.x - 6; 
+          curr_pronunciatio.y = curr_persona.body.y - 42 - 32; // DEBUG 1 --- I added 32 offset on Dec 29. 
+
+          if (anims_direction == "l") {
+			      curr_persona.anims.play("misa-left-walk", true);
+			    } else if (anims_direction == "r") {
+			      curr_persona.anims.play("misa-right-walk", true);
+			    } else if (anims_direction == "u") {
+			      curr_persona.anims.play("misa-back-walk", true);
+			    } else if (anims_direction == "d") {
+			      curr_persona.anims.play("misa-front-walk", true);
+			    } else {
+			      curr_persona.anims.stop();
+
+			      // If we were moving, pick an idle frame to use
+			      if (pre_anims_direction_dict[curr_persona_name] == "l") curr_persona.setTexture("atlas", "misa-left");else
+			      if (pre_anims_direction_dict[curr_persona_name] == "r") curr_persona.setTexture("atlas", "misa-right");else
+			      if (pre_anims_direction_dict[curr_persona_name] == "u") curr_persona.setTexture("atlas", "misa-back");else
+			      if (pre_anims_direction_dict[curr_persona_name] == "d") curr_persona.setTexture("atlas", "misa-front");
+			    };
+
+	      } 
+	      else {
+	        // Once we are done moving the personas, we move on to the "process"
+	        // stage where we will send the current locations of all personas at the
+	        // end of the movemments to the frontend server, and then the backend.
+	        for (let i=0; i<Object.keys(personas).length; i++) {
+	          let curr_persona_name = Object.keys(personas)[i]
+
+	          let curr_persona = personas[curr_persona_name];
+
+				if(!movement_target[curr_persona_name]){
+					movement_target[curr_persona_name] = []
+				}
+
+	          curr_persona.body.x = movement_target[curr_persona_name][0];
+	          curr_persona.body.y = movement_target[curr_persona_name][1];
+	        }
+	        phase = "process";
+	        execute_count = execute_count_max + 1;
+	        step = step + 1;
+	      }
+	    }
+
+	    // Filling in the action description. 
+	    if (execute_count == execute_count_max) { 
+	      for (let i=0; i<Object.keys(personas).length; i++) {
+	      	let action_description = ""
+	        let curr_persona_name = Object.keys(personas)[i];
+	        let curr_persona_name_os = curr_persona_name.replace(/ /g,"_");
+
+	        let description_content = execute_movement["persona"][curr_persona_name]["description"];
+	        let chat_content = ""
+
+	        if (execute_movement["persona"][curr_persona_name]["chat"] != null ){
+		        for (let j=0; j<execute_movement["persona"][curr_persona_name]["chat"].length; j++) { 
+		        	chat_content += execute_movement["persona"][curr_persona_name]["chat"][j][0] + ": " + execute_movement["persona"][curr_persona_name]["chat"][j][1] + "<br>"
+		        }
+		      } else {
+		      	chat_content = "<em>None at the moment</em>"
+		      }
+	        // action_description += description_content + "<br>";
+	        document.getElementById("current_action__"+curr_persona_name_os).innerHTML = description_content.split("@")[0];
+	        document.getElementById("target_address__"+curr_persona_name_os).innerHTML = description_content.split("@")[1];
+	        document.getElementById("chat__"+curr_persona_name_os).innerHTML = chat_content;
+	      }
+	    }
+
+	    execute_count = execute_count - 1;
+	  }
+	}
+
+	// Adds a new persona section when added
+	function addNewPersonaSection(p_name, p_name_os, currentAction, location, conversation, newSectionTitle, newSectionContent) {
+		const personasContainer = document.getElementById('personas-container');
+
+		if (!personasContainer) {
+			console.error("Parent container 'personas-container' not found.");
+			return;
+		}
+		else if(document.getElementById("current_action__"+p_name_os)){
+			console.log("Container exists");
+			return;
+		}
+
+        let image_url = null;
+        // Fetch personas image
+        fetch(`/character_image/?url=assets/characters/profile/Patient_2.png`)
+            .then(response => response.blob())
+            .then(blob => {
+                // Construct the image source using the provided base URL and persona underscore name
+                image_url = URL.createObjectURL(blob);
+        })
+
+        // 1. Dynamically create the HTML structure for the new persona
+        const newPersonaHtml = `
+            <div class="media" id="on_screen_det_content-${p_name_os}" style="background-color:#EEEEEE; padding:1em; padding-left:3.5em; padding-right:2em; border-radius:10px">
+                <div class="media-left media-middle">
+                    <a href="#">
+                        <img src="/character_image/?url=assets/characters/profile/${p_name_os}.png" style="width:5em">
+                    </a>
+                </div>
+                <div class="media-body" style='padding-left:3em; padding-top:0.5em; padding-bottom:1em'>
+                    <div class="row">
+                        <h2 class="col-md-8" id="name__${p_name_os}" style="margin-bottom:0.8em; font-size:1.85em; ">
+                            ${p_name_os} &nbsp;&nbsp;
+                            <a href="/replay_persona_state/${sim_code}/${step}/${p_name_os}" style="font-size:0.6em">State Details</a>
+                        </h2>
+                    </div>
+                    <div style="">
+                        <p style="font-size:1.2em"><strong>Current Action:</strong> <br><span id="current_action__${p_name_os}"></span></p>
+                        <p style="font-size:1.2em"><strong>Location:</strong> <br><span id="target_address__${p_name_os}"></span></p>
+                        <p style="font-size:1.2em"><strong>Current Conversation:</strong> <br><span id="chat__${p_name_os}"></span></p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        personasContainer.insertAdjacentHTML('beforeend', newPersonaHtml);
+	}
+
+	// Find the difference between arrays
+	function symmetricDifference(arr1, arr2) {
+		const set1 = new Set(arr1);
+		const set2 = new Set(arr2);
+		const result = new Set();
+
+		// Add elements from set1 that are not in set2
+		for (const item of set1) {
+			if (!set2.has(item)) {
+			result.add(item);
+			}
+		}
+
+		// Add elements from set2 that are not in set1
+		for (const item of set2) {
+			if (!set1.has(item)) {
+			result.add(item);
+			}
+		}
+
+		return Array.from(result); // Convert the Set back to an array
+	}
+
+	// Control button binders
+	var play_button=document.getElementById("play_button");
+	var pause_button=document.getElementById("pause_button");
+</script>

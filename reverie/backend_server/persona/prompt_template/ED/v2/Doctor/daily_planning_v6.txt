@@ -1,0 +1,14 @@
+daily_planning_v6.txt
+
+Variables: 
+!<INPUT 0>! -- Commonset
+!<INPUT 1>! -- Lifestyle
+!<INPUT 2>! -- Reverie date time now
+!<INPUT 3>! -- Persona first names
+!<INPUT 4>! -- wake_up_hour
+
+<commentblockmarker>###</commentblockmarker>
+!<INPUT 0>!
+
+In general, !<INPUT 1>!
+Today is !<INPUT 2>!. Here is !<INPUT 3>!'s plan today in broad-strokes being at the emergency department already and working and awake all day, TAKING NO BREAKS (with the time of the day. e.g., doocument patient updates at 7:00 am, diagnosing patients from 8:00 am to 12:00 pm): !<INPUT 4>!, 1)

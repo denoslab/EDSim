@@ -288,14 +288,21 @@ EDsim builds on the **Generative Agents** framework by Park et al. (Stanford/Goo
 If you use EDsim in your research, please cite:
 
 ```bibtex
-@article{edsim2025,
-  title   = {EDSim: An Agentic Simulator for Emergency Department Operations},
-  author  = {TODO},
-  journal = {TODO},
-  year    = {TODO}
+@misc{wu2026edsim,
+  title     = {EDSim: An Agentic Simulator for Emergency Department Operations},
+  author    = {Wu, Jiajun and Ledingham, Hutton and Wang, Zirui and Teitge, Braden
+               and Burn, Alexander and Ouadihi, Oussama and Ghattas, Mohamad
+               and Vicaldo, Darin and Cociuba, Sergiu and Harmon, Megan
+               and Chowdhury, Tanvir and Marshall, Zack and Williamson, Tyler
+               and Risling, Tracie and Lang, Eddy and Zhou, Jiayu
+               and Holodinsky, Jessalyn and Drew, Steve},
+  year      = {2026},
+  doi       = {10.21203/rs.3.rs-8960989/v1},
+  note      = {Preprint, under review at \textit{npj Digital Medicine}},
+  publisher = {Research Square}
 }
 ```
 
 ## License
 
-This project is released under the [MIT License](LICENSE).
+This project is released under the [Apache License 2.0](LICENSE).

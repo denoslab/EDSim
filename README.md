@@ -1,7 +1,12 @@
 # EDSim: An Agentic Simulator for Emergency Department Operations
 
 [![CI](https://github.com/denoslab/EDSim/actions/workflows/ci.yml/badge.svg)](https://github.com/denoslab/EDSim/actions/workflows/ci.yml)
+[![Docker](https://github.com/denoslab/EDSim/actions/workflows/docker.yml/badge.svg)](https://github.com/denoslab/EDSim/actions/workflows/docker.yml)
 [![Preprint](https://img.shields.io/badge/preprint-Research%20Square-blue)](https://www.researchsquare.com/article/rs-8960989/v1)
+[![DOI](https://img.shields.io/badge/DOI-10.21203%2Frs.3.rs--8960989%2Fv1-blue)](https://doi.org/10.21203/rs.3.rs-8960989/v1)
+[![npj Digital Medicine](https://img.shields.io/badge/npj%20Digital%20Medicine-under%20review-orange)](https://www.nature.com/npjdigitalmed/)
+[![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 EDSim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent — doctor, bedside nurse, triage nurse, or patient — perceives its environment, makes decisions through cognitive modules, holds natural-language conversations with other agents, and executes clinically-constrained behaviors in real time. The result is a high-fidelity testbed for ED operations research that goes beyond what traditional simulation methods can produce.
 

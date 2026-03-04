@@ -1,23 +1,49 @@
-# EDSim: An LLM-Powered Emergency Department Simulation Using Generative Agents
+# EDSim: An Agentic Simulator for Emergency Department Operations
 
 [![CI](https://github.com/denoslab/EDSim/actions/workflows/ci.yml/badge.svg)](https://github.com/denoslab/EDSim/actions/workflows/ci.yml)
+[![Docker](https://github.com/denoslab/EDSim/actions/workflows/docker.yml/badge.svg)](https://github.com/denoslab/EDSim/actions/workflows/docker.yml)
+[![Preprint](https://img.shields.io/badge/preprint-Research%20Square-blue)](https://www.researchsquare.com/article/rs-8960989/v1)
+[![DOI](https://img.shields.io/badge/DOI-10.21203%2Frs.3.rs--8960989%2Fv1-blue)](https://doi.org/10.21203/rs.3.rs-8960989/v1)
+[![npj Digital Medicine](https://img.shields.io/badge/npj%20Digital%20Medicine-under%20review-orange)](https://www.nature.com/npjdigitalmed/)
+[![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-EDSim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent (doctors, nurses, patients) perceives its environment, makes decisions through cognitive modules, and interacts with other agents in real time, producing realistic ED dynamics suitable for operational analysis and research.
+EDSim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent — doctor, bedside nurse, triage nurse, or patient — perceives its environment, makes decisions through cognitive modules, holds natural-language conversations with other agents, and executes clinically-constrained behaviors in real time. The result is a high-fidelity testbed for ED operations research that goes beyond what traditional simulation methods can produce.
+
+## Background & Motivation
+
+Emergency departments face chronic crowding and complex patient-flow challenges that are difficult to study safely in real clinical settings. Traditional simulation approaches — discrete-event models and rule-based agent simulations — can reproduce coarse statistics like average wait times and throughput, but they cannot capture the fine-grained staff behaviors, spontaneous communication, and dynamic decision-making that ultimately shape patient outcomes.
+
+EDSim addresses this gap by grounding each virtual agent in an LLM-driven cognitive architecture. Agents form memories, reflect on past events, plan upcoming actions, and converse with one another — all while operating under clinically realistic constraints such as CTAS triage protocols and role-specific responsibilities. This combination enables the simulator to surface emergent workflow patterns that simpler models miss.
+
+The immediate practical value is speed and safety: hospital managers and researchers can run what-if experiments — reallocating beds, adjusting staffing levels, changing triage thresholds — in minutes on commodity hardware, without disrupting real patient care.
+
+## Key Findings & Validation
+
+EDSim has been validated against real-world ED operational data (details in the [preprint](https://www.researchsquare.com/article/rs-8960989/v1)):
+
+- **Realistic wait-time distributions** — Baseline simulation results align with historical patient wait-time distributions when stratified by CTAS triage acuity level (1–5).
+- **Authentic agent behavior** — Agents generate convincing clinical conversations and exhibit plausible adaptive behaviors under novel workflow conditions not seen during prompt design.
+- **Rapid experimentation** — Operational interventions (e.g., bed reallocation, surge staffing) can be evaluated end-to-end in minutes, enabling iterative hypothesis testing.
+
+> EDSim represents a new paradigm for healthcare operations research — combining data-driven modeling with LLM-generated behavior to produce a simulator that is both statistically grounded and behaviorally rich.
 
 ## Table of Contents
 
-1. [Quickstart](#quickstart)
-2. [Architecture Overview](#architecture-overview)
-3. [Agent Roles](#agent-roles)
-4. [Installation](#installation)
-5. [Running the Simulation](#running-the-simulation)
-6. [Configuration](#configuration)
-7. [Data Collection](#data-collection)
-8. [Testing](#testing)
-9. [CI/CD](#cicd)
-10. [Acknowledgments](#acknowledgments)
-11. [Citation](#citation)
-12. [License](#license)
+1. [Background & Motivation](#background--motivation)
+2. [Key Findings & Validation](#key-findings--validation)
+3. [Quickstart](#quickstart)
+4. [Architecture Overview](#architecture-overview)
+5. [Agent Roles](#agent-roles)
+6. [Installation](#installation)
+7. [Running the Simulation](#running-the-simulation)
+8. [Configuration](#configuration)
+9. [Data Collection](#data-collection)
+10. [Testing](#testing)
+11. [CI/CD](#cicd)
+12. [Acknowledgments](#acknowledgments)
+13. [Citation](#citation)
+14. [License](#license)
 
 ## Quickstart
 
@@ -44,7 +70,7 @@ EDSim consists of three main components:
 
 ### Backend Simulation Engine (`reverie/`)
 
-The core engine that drives agent behavior. Each agent is equipped with cognitive modules that mirror the generative agents architecture:
+The core engine that drives agent behavior. Each agent is equipped with cognitive modules that form the simulation's cognitive loop:
 
 - **Plan** — generates and revises daily and immediate action plans
 - **Perceive** — observes nearby agents, objects, and events in the ED environment
@@ -299,9 +325,7 @@ git tag v1.0.0 && git push origin v1.0.0
 
 ## Acknowledgments
 
-EDSim builds on the **Generative Agents** framework by Park et al. (Stanford/Google):
-
-> Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. 2023. *Generative Agents: Interactive Simulacra of Human Behavior.* In Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST '23). ACM.
+We thank the clinical staff and operational teams who contributed domain expertise to the design of EDSim's agent behaviors and workflows.
 
 ## Citation
 

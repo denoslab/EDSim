@@ -37,14 +37,12 @@ jobs:
         with:
           python-version: "3.9.12"
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            environment/frontend_server/requirements.txt
+          cache-dependency-path: environment/frontend_server/requirements.txt
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
           pip install -r environment/frontend_server/requirements.txt
+          pip install pytest==8.1.1 pytest-django==4.8.0
 
       - name: Run tests
         run: python -m pytest tests/frontend/ -v

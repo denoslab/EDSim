@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-EDsim is an LLM-powered multi-agent simulation of emergency department (ED) workflows. It builds on the [Generative Agents](https://arxiv.org/abs/2304.03442) framework (Park et al., 2023). Four agent types — Doctor, Bedside Nurse, Triage Nurse, and Patient — perceive their environment, plan actions, converse with each other, and execute behaviors driven by LLM calls.
+EDSim is an LLM-powered multi-agent simulation of emergency department (ED) workflows. It builds on the [Generative Agents](https://arxiv.org/abs/2304.03442) framework (Park et al., 2023). Four agent types — Doctor, Bedside Nurse, Triage Nurse, and Patient — perceive their environment, plan actions, converse with each other, and execute behaviors driven by LLM calls.
 
 ## Environment Setup
 

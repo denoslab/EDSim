@@ -1,8 +1,8 @@
-# EDsim: An LLM-Powered Emergency Department Simulation Using Generative Agents
+# EDSim: An LLM-Powered Emergency Department Simulation Using Generative Agents
 
 [![CI](https://github.com/denoslab/EDSim/actions/workflows/ci.yml/badge.svg)](https://github.com/denoslab/EDSim/actions/workflows/ci.yml)
 
-EDsim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent (doctors, nurses, patients) perceives its environment, makes decisions through cognitive modules, and interacts with other agents in real time, producing realistic ED dynamics suitable for operational analysis and research.
+EDSim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent (doctors, nurses, patients) perceives its environment, makes decisions through cognitive modules, and interacts with other agents in real time, producing realistic ED dynamics suitable for operational analysis and research.
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@ EDsim is a multi-agent simulation of emergency department (ED) workflows driven 
 
 ## Architecture Overview
 
-EDsim consists of three main components:
+EDSim consists of three main components:
 
 ### Backend Simulation Engine (`reverie/`)
 
@@ -54,8 +54,8 @@ Post-simulation scripts that compute operational metrics from the simulation out
 2. Clone this repository:
 
    ```bash
-   git clone <repo-url> EDsim
-   cd EDsim
+   git clone <repo-url> EDSim
+   cd EDSim
    ```
 
 3. Create and activate the Conda environment:
@@ -107,7 +107,7 @@ Post-simulation scripts that compute operational metrics from the simulation out
 
 ## Running the Simulation
 
-There are two ways to run EDsim: **interactive mode** (with the frontend visualization) and **batch mode** (headless, using `run_simulation.py`).
+There are two ways to run EDSim: **interactive mode** (with the frontend visualization) and **batch mode** (headless, using `run_simulation.py`).
 
 ---
 
@@ -280,14 +280,14 @@ Patient times in both area and state are also exported as separate CSV files alo
 
 ## Acknowledgments
 
-EDsim builds on the **Generative Agents** framework by Park et al. (Stanford/Google):
+EDSim builds on the **Generative Agents** framework by Park et al. (Stanford/Google):
 
 > Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. 2023. *Generative Agents: Interactive Simulacra of Human Behavior.* In Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST '23). ACM.
 > 
 
 ## Citation
 
-If you use EDsim in your research, please cite:
+If you use EDSim in your research, please cite:
 
 ```bibtex
 @misc{wu2026edsim,

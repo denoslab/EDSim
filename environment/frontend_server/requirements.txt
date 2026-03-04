@@ -36,6 +36,8 @@ patsy==0.5.3
 Pillow==8.4.0
 psutil==7.0.0
 psycopg2-binary==2.9.5
+pytest==8.1.1
+pytest-django==4.8.0
 pycparser==2.21
 pyparsing==3.0.6
 PySocks==1.7.1

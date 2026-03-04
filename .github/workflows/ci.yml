@@ -40,9 +40,7 @@ jobs:
           cache-dependency-path: environment/frontend_server/requirements.txt
 
       - name: Install dependencies
-        run: |
-          pip install -r environment/frontend_server/requirements.txt
-          pip install pytest==8.1.1 pytest-django==4.8.0
+        run: pip install -r environment/frontend_server/requirements.txt
 
       - name: Run tests
         run: python -m pytest tests/frontend/ -v

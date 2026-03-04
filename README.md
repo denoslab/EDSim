@@ -53,7 +53,7 @@ Get EDSim running in three steps using Docker (no conda or Python setup required
 
 ```bash
 # 1. Clone the repository
-git clone <repo-url> EDSim && cd EDSim
+git clone https://github.com/denoslab/EDSim.git && cd EDSim
 
 # 2. Add your API credentials
 cp .env.example .env   # then edit .env with your OPENAI_KEY, OPENAI_MODEL, etc.
@@ -107,7 +107,7 @@ Post-simulation scripts that compute operational metrics from the simulation out
 ### Local (Conda) Setup
 
 ```bash
-git clone <repo-url> EDSim
+git clone https://github.com/denoslab/EDSim.git
 cd EDSim
 conda create --name simulacra python=3.9.12
 conda activate simulacra

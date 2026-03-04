@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+![CI](https://github.com/denoslab/EDSim/actions/workflows/ci.yml/badge.svg)
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
@@ -44,6 +46,21 @@ docker compose run --rm backend python reverie.py --origin ed_sim_n5 --target my
 To run tests inside the container:
 ```bash
 docker compose run --rm backend python -m pytest /app/tests/backend/ /app/tests/analysis/ -v -p no:django
+```
+
+## CI/CD
+
+GitHub Actions runs automatically on every PR and push to `main`:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **CI** (`ci.yml`) | PR / push to `main` | Runs all unit tests — backend, analysis, and frontend |
+| **Docker** (`docker.yml`) | Push to `main` | Builds and pushes images to GHCR |
+| **Release** (`release.yml`) | Push a `v*` tag | Creates a GitHub Release with auto-generated notes |
+
+To cut a release:
+```bash
+git tag v1.0.0 && git push origin v1.0.0
 ```
 
 ## Running the Simulation

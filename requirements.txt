@@ -68,3 +68,5 @@ yellowbrick==1.5
 zipp==3.6.0
 openai-cost-logger==0.4.1
 psutil==7.0.0
+pytest==8.1.1
+pytest-django==4.8.0

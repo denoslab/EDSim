@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8000:8000"
+    volumes:
+      - sim_storage:/app/storage
+      - sim_temp:/app/temp_storage
+    env_file: .env
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      - sim_storage:/app/environment/frontend_server/storage
+      - sim_temp:/app/environment/frontend_server/temp_storage
+    env_file: .env
+    depends_on:
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  sim_storage:
+  sim_temp:

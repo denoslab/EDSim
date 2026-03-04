@@ -172,6 +172,9 @@ cython_debug/
 
 openai_config.json
 
+# Docker build artifacts
+docker/*.log
+
 storage/
 temp_storage/
 environment/frontend_server/compressed_storage/

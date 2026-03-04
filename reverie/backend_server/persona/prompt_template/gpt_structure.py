@@ -1,3 +1,4 @@
+import os
 import time
 import json
 from pathlib import Path
@@ -24,11 +25,45 @@ def _is_retryable(exc):
     msg = str(exc).lower()
     return any(k in msg for k in ("server_error", "rate limit", "overloaded", "502", "503"))
 
+
+def _config_from_env() -> dict:
+    """Build openai_config from environment variables."""
+    return {
+        "client":               os.environ["OPENAI_CLIENT"],
+        "model":                os.environ["OPENAI_MODEL"],
+        "model-key":            os.environ["OPENAI_KEY"],
+        "model-endpoint":       os.environ.get("OPENAI_ENDPOINT", ""),
+        "model-api-version":    os.environ.get("OPENAI_API_VERSION", ""),
+        "model-costs": {
+            "input":  float(os.environ.get("OPENAI_MODEL_COST_INPUT", "0.0")),
+            "output": float(os.environ.get("OPENAI_MODEL_COST_OUTPUT", "0.0")),
+        },
+        "embeddings-client":     os.environ["EMBEDDINGS_CLIENT"],
+        "embeddings":            os.environ["EMBEDDINGS_MODEL"],
+        "embeddings-key":        os.environ["EMBEDDINGS_KEY"],
+        "embeddings-endpoint":   os.environ.get("EMBEDDINGS_ENDPOINT", ""),
+        "embeddings-api-version": os.environ.get("EMBEDDINGS_API_VERSION", ""),
+        "embeddings-costs": {
+            "input":  float(os.environ.get("EMBEDDINGS_COST_INPUT", "0.0")),
+            "output": float(os.environ.get("EMBEDDINGS_COST_OUTPUT", "0.0")),
+        },
+        "experiment-name": os.environ.get("EXPERIMENT_NAME", "edsim"),
+        "cost-upperbound": float(os.environ.get("COST_UPPERBOUND", "100.0")),
+    }
+
+
 CONFIG_PATH = Path(__file__).resolve().parents[4] / 'openai_config.json'
 
-config_path = CONFIG_PATH
-with open(config_path, "r") as f:
-    openai_config = json.load(f) 
+if os.environ.get("OPENAI_KEY"):
+    openai_config = _config_from_env()
+elif CONFIG_PATH.exists():
+    with open(CONFIG_PATH, "r") as f:
+        openai_config = json.load(f)
+else:
+    raise RuntimeError(
+        "No OpenAI credentials found. "
+        "Set OPENAI_KEY (and related env vars) or create openai_config.json."
+    )
 
 def setup_client(type: str, config: dict):
   """Setup the OpenAI client.

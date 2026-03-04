@@ -1,0 +1,24 @@
+FROM python:3.9.12-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source
+COPY reverie/ ./reverie/
+COPY environment/frontend_server/static_dirs/ ./environment/frontend_server/static_dirs/
+COPY analysis/ ./analysis/
+COPY tests/ ./tests/
+COPY pytest.ini .
+# Note: seed simulation data (ed_sim_n5) must be provided at runtime via a
+# mounted volume or by copying into the container; it is not baked into the image.
+
+# Copy entrypoint
+COPY docker/backend-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+WORKDIR /app/reverie/backend_server
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["python", "run_simulation.py"]

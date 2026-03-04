@@ -1,0 +1,11 @@
+FROM python:3.9.12-slim
+
+WORKDIR /app
+
+COPY environment/frontend_server/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY environment/frontend_server/ .
+
+EXPOSE 8000
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

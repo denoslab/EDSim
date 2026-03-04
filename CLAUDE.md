@@ -27,6 +27,25 @@ Create `openai_config.json` at the repo root (gitignored). Supports OpenAI or Az
 }
 ```
 
+## Docker Quickstart (recommended)
+
+```bash
+cp .env.example .env        # fill in your API credentials
+docker compose up --build   # starts frontend (:8000) + headless backend
+```
+
+Open http://localhost:8000 to confirm the frontend is running.
+
+To run the backend interactively instead:
+```bash
+docker compose run --rm backend python reverie.py --origin ed_sim_n5 --target my-run --browser no
+```
+
+To run tests inside the container:
+```bash
+docker compose run --rm backend python -m pytest /app/tests/backend/ /app/tests/analysis/ -v -p no:django
+```
+
 ## Running the Simulation
 
 ### Interactive mode (frontend + backend)

@@ -10,6 +10,8 @@
 
 EDSim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent — doctor, bedside nurse, triage nurse, or patient — perceives its environment, makes decisions through cognitive modules, holds natural-language conversations with other agents, and executes clinically-constrained behaviors in real time. The result is a high-fidelity testbed for ED operations research that goes beyond what traditional simulation methods can produce.
 
+![banner](static/banner.png)
+
 ## Background & Motivation
 
 Emergency departments face chronic crowding and complex patient-flow challenges that are difficult to study safely in real clinical settings. Traditional simulation approaches — discrete-event models and rule-based agent simulations — can reproduce coarse statistics like average wait times and throughput, but they cannot capture the fine-grained staff behaviors, spontaneous communication, and dynamic decision-making that ultimately shape patient outcomes.

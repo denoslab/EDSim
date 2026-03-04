@@ -1,5 +1,7 @@
 # EDsim: An LLM-Powered Emergency Department Simulation Using Generative Agents
 
+[![CI](https://github.com/denoslab/EDSim/actions/workflows/ci.yml/badge.svg)](https://github.com/denoslab/EDSim/actions/workflows/ci.yml)
+
 EDsim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent (doctors, nurses, patients) perceives its environment, makes decisions through cognitive modules, and interacts with other agents in real time, producing realistic ED dynamics suitable for operational analysis and research.
 
 ## Table of Contents

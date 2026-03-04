@@ -1,4 +1,4 @@
-# EDSim: An LLM-Powered Emergency Department Simulation Using Generative Agents
+# EDSim: An Agentic Simulator for Emergency Department Operations
 
 [![CI](https://github.com/denoslab/EDSim/actions/workflows/ci.yml/badge.svg)](https://github.com/denoslab/EDSim/actions/workflows/ci.yml)
 [![Preprint](https://img.shields.io/badge/preprint-Research%20Square-blue)](https://www.researchsquare.com/article/rs-8960989/v1)
@@ -9,7 +9,7 @@ EDSim is a multi-agent simulation of emergency department (ED) workflows driven 
 
 Emergency departments face chronic crowding and complex patient-flow challenges that are difficult to study safely in real clinical settings. Traditional simulation approaches — discrete-event models and rule-based agent simulations — can reproduce coarse statistics like average wait times and throughput, but they cannot capture the fine-grained staff behaviors, spontaneous communication, and dynamic decision-making that ultimately shape patient outcomes.
 
-EDSim addresses this gap by grounding each virtual agent in an LLM-driven cognitive architecture adapted from the [Generative Agents](https://arxiv.org/abs/2304.03442) framework (Park et al., 2023). Agents form memories, reflect on past events, plan upcoming actions, and converse with one another — all while operating under clinically realistic constraints such as CTAS triage protocols and role-specific responsibilities. This combination enables the simulator to surface emergent workflow patterns that simpler models miss.
+EDSim addresses this gap by grounding each virtual agent in an LLM-driven cognitive architecture. Agents form memories, reflect on past events, plan upcoming actions, and converse with one another — all while operating under clinically realistic constraints such as CTAS triage protocols and role-specific responsibilities. This combination enables the simulator to surface emergent workflow patterns that simpler models miss.
 
 The immediate practical value is speed and safety: hospital managers and researchers can run what-if experiments — reallocating beds, adjusting staffing levels, changing triage thresholds — in minutes on commodity hardware, without disrupting real patient care.
 
@@ -65,7 +65,7 @@ EDSim consists of three main components:
 
 ### Backend Simulation Engine (`reverie/`)
 
-The core engine that drives agent behavior. Each agent is equipped with cognitive modules that mirror the generative agents architecture:
+The core engine that drives agent behavior. Each agent is equipped with cognitive modules that form the simulation's cognitive loop:
 
 - **Plan** — generates and revises daily and immediate action plans
 - **Perceive** — observes nearby agents, objects, and events in the ED environment
@@ -320,9 +320,7 @@ git tag v1.0.0 && git push origin v1.0.0
 
 ## Acknowledgments
 
-EDSim builds on the **Generative Agents** framework by Park et al. (Stanford/Google):
-
-> Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. 2023. *Generative Agents: Interactive Simulacra of Human Behavior.* In Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST '23). ACM.
+We thank the clinical staff and operational teams who contributed domain expertise to the design of EDSim's agent behaviors and workflows.
 
 ## Citation
 

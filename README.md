@@ -9,6 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[Full API documentation](https://denoslab.github.io/EDSim/)**
+🎬 **[Demo video](https://youtu.be/FakLPb3d83s)**
 
 
 EDSim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent — doctor, bedside nurse, triage nurse, or patient — perceives its environment, makes decisions through cognitive modules, holds natural-language conversations with other agents, and executes clinically-constrained behaviors in real time. The result is a high-fidelity testbed for ED operations research that goes beyond what traditional simulation methods can produce.

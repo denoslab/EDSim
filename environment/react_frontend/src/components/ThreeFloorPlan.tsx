@@ -68,17 +68,19 @@ const MODEL_URLS: Record<string, string> = {
 const TEXTURE_ATLAS_URL = '/models/hospital/Texture_Atlas_Colors_2.png';
 
 /**
- * Scale factors per equipment type. Hospital FBX models have varied
- * native sizes; these factors normalise them to roughly 1 tile.
+ * Scale factors per equipment type. Hospital FBX models are authored
+ * in centimetres; these factors convert to Three.js units where 1
+ * unit = 1 map tile (~3 ft / ~1 m). A hospital bed is ~200 cm long
+ * in the FBX, and should occupy ~1.2 tiles on screen → scale ≈ 0.006.
  */
 const MODEL_SCALE: Record<string, number> = {
-  bed: 0.012,
-  chair: 0.012,
-  waiting_room_chair: 0.012,
-  computer: 0.012,
-  diagnostic_table: 0.012,
-  medical_equipment: 0.012,
-  wheelchair: 0.012
+  bed: 0.006,
+  chair: 0.008,
+  waiting_room_chair: 0.007,
+  computer: 0.008,
+  diagnostic_table: 0.006,
+  medical_equipment: 0.007,
+  wheelchair: 0.007
 };
 
 /* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */

@@ -90,21 +90,14 @@ const MODEL_SCALE: Record<string, number> = {
 };
 
 /**
- * Per-type Y-axis rotation (radians) applied on top of the Z-up→Y-up
- * correction. Waiting room chairs face right (toward the TV wall).
+ * Equipment types that are handled by the ReceptionDecorations
+ * component instead of per-tile placement. The parser emits 12
+ * individual waiting_room_chair tiles but the FBX model is a
+ * multi-seat bench — placing one per tile creates overlapping
+ * furniture. These types are skipped in Furniture and placed
+ * manually with correct count and positioning.
  */
-const MODEL_Y_ROTATION: Record<string, number> = {
-  waiting_room_chair: Math.PI / 2
-};
-
-/**
- * Per-type position offset (in tiles) applied to the parsed tile
- * position. Used to nudge equipment toward a better visual location
- * without changing the parser data.
- */
-const MODEL_OFFSET: Record<string, [number, number, number]> = {
-  waiting_room_chair: [3, 0, 0]
-};
+const DECORATION_HANDLED_TYPES = new Set(['waiting_room_chair']);
 
 /* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */
 
@@ -367,19 +360,13 @@ function FurnitureModel({
 }) {
   const model = useFBXModel(modelUrl);
   const scale = MODEL_SCALE[piece.type] ?? 0.012;
-  const yRot = MODEL_Y_ROTATION[piece.type] ?? 0;
-  const offset = MODEL_OFFSET[piece.type] ?? [0, 0, 0];
 
   if (!model) return null;
   return (
     <primitive
       object={model}
-      position={[
-        piece.tileX + 0.5 + offset[0],
-        FLOOR_Y + offset[1],
-        piece.tileY + 0.5 + offset[2]
-      ]}
-      rotation={[-Math.PI / 2, 0, yRot]}
+      position={[piece.tileX + 0.5, FLOOR_Y, piece.tileY + 0.5]}
+      rotation={[-Math.PI / 2, 0, 0]}
       scale={[scale, scale, scale]}
     />
   );
@@ -392,6 +379,8 @@ function Furniture({ layout }: { layout: MapLayout }) {
   return (
     <>
       {layout.equipment.map((piece) => {
+        // Skip types that are handled by ReceptionDecorations
+        if (DECORATION_HANDLED_TYPES.has(piece.type)) return null;
         const modelUrl = MODEL_URLS[piece.type];
         if (!modelUrl) return null;
         return (
@@ -447,7 +436,6 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
   const { minX, minY, maxX, maxY } = waitingZone.bounds;
   const cx = (minX + maxX + 1) / 2;
   const cz = (minY + maxY + 1) / 2;
-  const h = maxY - minY + 1;
   const s = FBX_SCALE;
 
   // Place items relative to zone bounds using common sense for a
@@ -499,20 +487,40 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
         position={[cx - 2, FLOOR_Y + 0.55, minY + 1.4]}
         scale={s * 1.2}
       />
-      {/* Magazine table — between the chair rows, centre of room */}
+      {/* ---- Waiting chairs: 3 bench rows in the middle of the room,
+           facing right toward the TV. Spaced 2 tiles apart vertically,
+           centred in the room. ---- */}
+      <Decoration
+        url="/models/hospital/waiting_chair.fbx"
+        position={[cx, FLOOR_Y, cz - 2]}
+        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+        scale={s * 1.8}
+      />
+      <Decoration
+        url="/models/hospital/waiting_chair.fbx"
+        position={[cx, FLOOR_Y, cz]}
+        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+        scale={s * 1.8}
+      />
+      <Decoration
+        url="/models/hospital/waiting_chair.fbx"
+        position={[cx, FLOOR_Y, cz + 2]}
+        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+        scale={s * 1.8}
+      />
+
+      {/* Magazine table — between the first two chair rows */}
       <Decoration
         url="/models/hospital/table_magazines.fbx"
-        position={[cx - 1.5, FLOOR_Y, cz]}
+        position={[cx + 2, FLOOR_Y, cz - 1]}
         scale={s * 1.5}
       />
-      {/* Second magazine table */}
-      {h > 6 ? (
-        <Decoration
-          url="/models/hospital/table_magazines.fbx"
-          position={[cx - 1.5, FLOOR_Y, cz + 3]}
-          scale={s * 1.5}
-        />
-      ) : null}
+      {/* Second magazine table — between the last two chair rows */}
+      <Decoration
+        url="/models/hospital/table_magazines.fbx"
+        position={[cx + 2, FLOOR_Y, cz + 1]}
+        scale={s * 1.5}
+      />
       {/* Plant — bottom-left corner */}
       <Decoration
         url="/models/hospital/plant.fbx"

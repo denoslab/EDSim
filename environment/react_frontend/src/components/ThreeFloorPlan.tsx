@@ -80,13 +80,13 @@ const TEXTURE_ATLAS_URL = '/models/hospital/Texture_Atlas_Colors_2.png';
  *   diagnostic_table: 456.1 × 1244.8 × 653.8  → target 1.0 tiles
  */
 const MODEL_SCALE: Record<string, number> = {
-  bed: 0.00085,
-  chair: 0.00135,
-  waiting_room_chair: 0.00044,
-  computer: 0.00122,
-  diagnostic_table: 0.0008,
-  medical_equipment: 0.00122,
-  wheelchair: 0.00093
+  bed: 0.0034,
+  chair: 0.0054,
+  waiting_room_chair: 0.00176,
+  computer: 0.00488,
+  diagnostic_table: 0.0032,
+  medical_equipment: 0.00488,
+  wheelchair: 0.00372
 };
 
 /* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */

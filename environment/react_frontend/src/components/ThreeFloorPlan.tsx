@@ -313,6 +313,7 @@ function FurnitureModel({
     <primitive
       object={model}
       position={[piece.tileX + 0.5, FLOOR_Y, piece.tileY + 0.5]}
+      rotation={[-Math.PI / 2, 0, 0]}
       scale={[scale, scale, scale]}
     />
   );

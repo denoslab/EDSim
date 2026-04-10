@@ -384,6 +384,154 @@ function Furniture({ layout }: { layout: MapLayout }) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Reception area decorations                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** A single FBX decoration placed at a fixed position. */
+function Decoration({
+  url,
+  position,
+  rotation,
+  scale
+}: {
+  url: string;
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+}) {
+  const model = useFBXModel(url);
+  if (!model) return null;
+  const s = scale ?? FBX_SCALE;
+  return (
+    <primitive
+      object={model.clone(true)}
+      position={position}
+      rotation={rotation ?? [-Math.PI / 2, 0, 0]}
+      scale={[s, s, s]}
+    />
+  );
+}
+
+/**
+ * Places all reception/waiting room decorations from the Hospital pack
+ * inside the first waiting_room zone: reception desk with PC, magazine
+ * tables, plants, garbage, TV, bookshelf.
+ */
+function ReceptionDecorations({ layout }: { layout: MapLayout }) {
+  const waitingZone = layout.zones.find((z) => z.zoneId === 'waiting_room');
+  if (!waitingZone) return null;
+
+  const { minX, minY, maxX, maxY } = waitingZone.bounds;
+  const cx = (minX + maxX + 1) / 2;
+  const cz = (minY + maxY + 1) / 2;
+  const h = maxY - minY + 1;
+  const s = FBX_SCALE;
+
+  // Place items relative to zone bounds using common sense for a
+  // hospital reception area:
+  //  - Reception desk near the top edge (facing the room)
+  //  - Receptionist chair behind the desk
+  //  - PC setup on the desk
+  //  - Magazine tables in the centre
+  //  - Plants in corners
+  //  - Garbage near the entrance (bottom edge)
+  //  - TV on a side wall
+  //  - Bookshelf against a wall
+
+  return (
+    <>
+      {/* Reception desk — near the top edge, centered */}
+      <Decoration
+        url="/models/hospital/reception_desk.fbx"
+        position={[cx, FLOOR_Y, minY + 1.5]}
+        scale={s}
+      />
+      {/* Receptionist chair behind the desk */}
+      <Decoration
+        url="/models/hospital/chair_reception.fbx"
+        position={[cx + 0.5, FLOOR_Y, minY + 0.8]}
+        scale={s * 1.5}
+      />
+      {/* PC Monitor on the desk */}
+      <Decoration
+        url="/models/hospital/pc_monitor.fbx"
+        position={[cx - 0.5, FLOOR_Y + 0.6, minY + 1.2]}
+        scale={s * 1.2}
+      />
+      {/* PC Keyboard on the desk */}
+      <Decoration
+        url="/models/hospital/pc_keyboard.fbx"
+        position={[cx - 0.3, FLOOR_Y + 0.55, minY + 1.6]}
+        scale={s * 1.2}
+      />
+      {/* Phone on the desk */}
+      <Decoration
+        url="/models/hospital/phone.fbx"
+        position={[cx + 1, FLOOR_Y + 0.6, minY + 1.3]}
+        scale={s * 1.2}
+      />
+      {/* Magazine table — centre of the waiting area */}
+      <Decoration
+        url="/models/hospital/table_magazines.fbx"
+        position={[cx, FLOOR_Y, cz + 1]}
+        scale={s * 1.5}
+      />
+      {/* Second magazine table */}
+      {h > 6 ? (
+        <Decoration
+          url="/models/hospital/table_magazines.fbx"
+          position={[cx - 2, FLOOR_Y, cz + 1]}
+          scale={s * 1.5}
+        />
+      ) : null}
+      {/* Plant — bottom-left corner */}
+      <Decoration
+        url="/models/hospital/plant.fbx"
+        position={[minX + 0.5, FLOOR_Y, maxY - 0.5]}
+        scale={s * 1.5}
+      />
+      {/* Small plant — top-right corner */}
+      <Decoration
+        url="/models/hospital/plant_small.fbx"
+        position={[maxX - 0.5, FLOOR_Y, minY + 0.5]}
+        scale={s * 1.5}
+      />
+      {/* Cactus — near the desk */}
+      <Decoration
+        url="/models/hospital/cactus.fbx"
+        position={[cx - 2, FLOOR_Y + 0.55, minY + 1.4]}
+        scale={s * 1.2}
+      />
+      {/* Garbage can — near the entrance (bottom edge) */}
+      <Decoration
+        url="/models/hospital/garbage.fbx"
+        position={[minX + 1, FLOOR_Y, maxY - 0.5]}
+        scale={s * 1.5}
+      />
+      {/* TV — on a side wall */}
+      <Decoration
+        url="/models/hospital/tv.fbx"
+        position={[maxX - 0.3, FLOOR_Y + 1.2, cz]}
+        rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
+        scale={s * 1.5}
+      />
+      {/* Bookshelf — against a wall */}
+      <Decoration
+        url="/models/hospital/bookshelf.fbx"
+        position={[minX + 0.4, FLOOR_Y, cz - 1]}
+        scale={s * 1.5}
+      />
+      {/* Exit sign above the entrance */}
+      <Decoration
+        url="/models/hospital/exit_sign.fbx"
+        position={[cx, FLOOR_Y + 1.8, maxY]}
+        scale={s * 1.2}
+      />
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Lighting                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -443,6 +591,7 @@ function Scene({
       ))}
       <Walls layout={layout} />
       <Furniture layout={layout} />
+      <ReceptionDecorations layout={layout} />
       <OrbitControls
         ref={controlsRef as React.RefObject<OrbitControlsImpl>}
         target={[cx, 0, cz]}

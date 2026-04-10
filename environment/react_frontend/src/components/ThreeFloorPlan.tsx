@@ -487,27 +487,29 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
         position={[cx - 2, FLOOR_Y + 0.55, minY + 1.4]}
         scale={s * 1.2}
       />
-      {/* ---- Waiting chairs: 3 bench rows in the middle of the room,
-           facing right toward the TV. Spaced 2 tiles apart vertically,
-           centred in the room. ---- */}
-      <Decoration
-        url="/models/hospital/waiting_chair.fbx"
-        position={[cx, FLOOR_Y, cz - 2]}
-        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
-        scale={s * 1.8}
-      />
-      <Decoration
-        url="/models/hospital/waiting_chair.fbx"
-        position={[cx, FLOOR_Y, cz]}
-        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
-        scale={s * 1.8}
-      />
-      <Decoration
-        url="/models/hospital/waiting_chair.fbx"
-        position={[cx, FLOOR_Y, cz + 2]}
-        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
-        scale={s * 1.8}
-      />
+      {/* ---- Waiting chairs: 2 rows of 6, facing each other with
+           an aisle between them. Row 1 faces the TV (right),
+           Row 2 faces left. ---- */}
+      {/* Row 1 — 6 chairs facing right toward the TV */}
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <Decoration
+          key={`chair-row1-${i}`}
+          url="/models/hospital/waiting_chair.fbx"
+          position={[cx - 1, FLOOR_Y, cz - 3 + i * 1.2]}
+          rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+          scale={s * 1.2}
+        />
+      ))}
+      {/* Row 2 — 6 chairs facing left, opposite row 1 */}
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <Decoration
+          key={`chair-row2-${i}`}
+          url="/models/hospital/waiting_chair.fbx"
+          position={[cx + 1.5, FLOOR_Y, cz - 3 + i * 1.2]}
+          rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
+          scale={s * 1.2}
+        />
+      ))}
 
       {/* Magazine table — between the first two chair rows */}
       <Decoration

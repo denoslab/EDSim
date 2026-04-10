@@ -94,7 +94,7 @@ const MODEL_SCALE: Record<string, number> = {
  * correction. Waiting room chairs face right (toward the TV wall).
  */
 const MODEL_Y_ROTATION: Record<string, number> = {
-  waiting_room_chair: -Math.PI / 2
+  waiting_room_chair: Math.PI / 2
 };
 
 /* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */
@@ -449,40 +449,40 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
 
   return (
     <>
-      {/* Reception desk — at the very top edge, away from chairs */}
+      {/* Reception desk — original position, inside the room */}
       <Decoration
         url="/models/hospital/reception_desk.fbx"
-        position={[cx, FLOOR_Y, minY + 0.5]}
+        position={[cx, FLOOR_Y, minY + 1.5]}
         scale={s}
       />
       {/* Receptionist chair behind the desk */}
       <Decoration
         url="/models/hospital/chair_reception.fbx"
-        position={[cx + 0.5, FLOOR_Y, minY + 0.2]}
+        position={[cx + 0.5, FLOOR_Y, minY + 0.8]}
         scale={s * 1.5}
       />
       {/* PC Monitor on the desk */}
       <Decoration
         url="/models/hospital/pc_monitor.fbx"
-        position={[cx - 0.5, FLOOR_Y + 0.6, minY + 0.3]}
+        position={[cx - 0.5, FLOOR_Y + 0.6, minY + 1.2]}
         scale={s * 1.2}
       />
       {/* PC Keyboard on the desk */}
       <Decoration
         url="/models/hospital/pc_keyboard.fbx"
-        position={[cx - 0.3, FLOOR_Y + 0.55, minY + 0.7]}
+        position={[cx - 0.3, FLOOR_Y + 0.55, minY + 1.6]}
         scale={s * 1.2}
       />
       {/* Phone on the desk */}
       <Decoration
         url="/models/hospital/phone.fbx"
-        position={[cx + 1, FLOOR_Y + 0.6, minY + 0.4]}
+        position={[cx + 1, FLOOR_Y + 0.6, minY + 1.3]}
         scale={s * 1.2}
       />
       {/* Cactus on the desk */}
       <Decoration
         url="/models/hospital/cactus.fbx"
-        position={[cx - 2, FLOOR_Y + 0.55, minY + 0.5]}
+        position={[cx - 2, FLOOR_Y + 0.55, minY + 1.4]}
         scale={s * 1.2}
       />
       {/* Magazine table — between the chair rows, centre of room */}

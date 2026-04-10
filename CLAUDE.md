@@ -122,6 +122,28 @@ Outputs: `analysis/patient_time_metrics.csv` and `analysis/ctas_daily_metrics.cs
 
 ## Architecture
 
+### Phase 1 React Floor Plan Viewer (Issue #15)
+
+A new bird's-eye renderer is being built under `environment/react_frontend/`
+using **React + Vite + TypeScript + Three.js**. Phase 1 (the Tiled JSON
+parser, zone/equipment/wall layers, and a static floor plan canvas) ships
+with its own unit + e2e test suites and a single-command launcher:
+
+```bash
+./run_map_viewer.sh           # install deps + start dev server (http://127.0.0.1:5173)
+./run_map_viewer.sh test      # vitest unit tests (parser invariants)
+./run_map_viewer.sh test:e2e  # Playwright e2e tests (viewer interactions)
+```
+
+The React frontend reads its map data directly from
+`environment/frontend_server/static_dirs/assets/the_ed/`, so any change to
+the legacy Phaser asset tree shows up in the new renderer immediately —
+there is no copy step.
+
+The legacy Django/Phaser frontend in `environment/frontend_server/` remains
+the active runtime; the React frontend lives alongside it as a successor
+under construction.
+
 ### Component Layout
 
 ```
@@ -156,6 +178,16 @@ analysis/
 
 data/
   baseline/, surge/         # Pre-computed reference metrics CSVs
+
+environment/react_frontend/ # Phase 1 React + Three.js floor plan viewer
+  src/parser/               # parseTiledJSON pipeline (issue #15 1.1)
+  src/components/           # ThreeFloorPlan (Three.js 3D renderer)
+  src/theme/                # Colour palette
+  src/data/maps.ts          # Catalogue of available Tiled fixtures
+  src/MapViewer.tsx         # Top-level page (sidebar + canvas)
+  tests/unit/               # vitest parser tests (50)
+  tests/e2e/                # Playwright viewer tests (6)
+  README.md                 # Phase 1 architecture and usage
 ```
 
 ### Simulation State Storage

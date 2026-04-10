@@ -9,6 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[Full API documentation](https://denoslab.github.io/EDSim/)**
+🎬 **[Demo video](https://youtu.be/FakLPb3d83s)**
 
 
 EDSim is a multi-agent simulation of emergency department (ED) workflows driven by large language model (LLM)-powered autonomous agents. Each agent — doctor, bedside nurse, triage nurse, or patient — perceives its environment, makes decisions through cognitive modules, holds natural-language conversations with other agents, and executes clinically-constrained behaviors in real time. The result is a high-fidelity testbed for ED operations research that goes beyond what traditional simulation methods can produce.
@@ -68,6 +69,20 @@ docker compose up --build
 Open [http://localhost:8000/](http://localhost:8000/) to confirm the frontend is running. The backend runs headlessly and writes simulation state to a shared volume.
 
 > For interactive mode, custom configuration, or local development, see the sections below.
+
+### Phase 1 Floor Plan Viewer
+
+A new React + Three.js 3D renderer is being built under
+[`environment/react_frontend/`](environment/react_frontend/) (tracking
+[Issue #15](https://github.com/denoslab/EDSim/issues/15)). To preview just
+the floor plan layout from a Tiled map without running the simulation:
+
+```bash
+./run_map_viewer.sh             # opens http://127.0.0.1:5173
+```
+
+See [`environment/react_frontend/README.md`](environment/react_frontend/README.md)
+for the parser architecture, validation criteria, and how to add a new map.
 
 ## Architecture Overview
 

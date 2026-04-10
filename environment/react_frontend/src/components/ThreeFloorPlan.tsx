@@ -97,6 +97,15 @@ const MODEL_Y_ROTATION: Record<string, number> = {
   waiting_room_chair: Math.PI / 2
 };
 
+/**
+ * Per-type position offset (in tiles) applied to the parsed tile
+ * position. Used to nudge equipment toward a better visual location
+ * without changing the parser data.
+ */
+const MODEL_OFFSET: Record<string, [number, number, number]> = {
+  waiting_room_chair: [3, 0, 0]
+};
+
 /* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */
 
 /* -------------------------------------------------------------------------- */
@@ -359,12 +368,17 @@ function FurnitureModel({
   const model = useFBXModel(modelUrl);
   const scale = MODEL_SCALE[piece.type] ?? 0.012;
   const yRot = MODEL_Y_ROTATION[piece.type] ?? 0;
+  const offset = MODEL_OFFSET[piece.type] ?? [0, 0, 0];
 
   if (!model) return null;
   return (
     <primitive
       object={model}
-      position={[piece.tileX + 0.5, FLOOR_Y, piece.tileY + 0.5]}
+      position={[
+        piece.tileX + 0.5 + offset[0],
+        FLOOR_Y + offset[1],
+        piece.tileY + 0.5 + offset[2]
+      ]}
       rotation={[-Math.PI / 2, 0, yRot]}
       scale={[scale, scale, scale]}
     />

@@ -21,15 +21,14 @@
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useLoader, useThree } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { TextureLoader } from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { MapLayout, EquipmentPlacement, ZoneRegion } from '@/parser/types';
-import { ZONE_TEXTURE_URLS } from '@/assets';
-import { ZONE_COLORS, CANVAS_BACKGROUND_COLOR } from '@/theme/colors';
+import { CANVAS_BACKGROUND_COLOR } from '@/theme/colors';
 
 /** Props for {@link ThreeFloorPlan}. */
 export interface ThreeFloorPlanProps {
@@ -42,8 +41,6 @@ export interface ThreeFloorPlanProps {
 }
 
 /** Scale: 1 tile = 1 Three.js unit. */
-const WALL_HEIGHT = 2.5;
-const WALL_THICKNESS = 0.25;
 const FLOOR_Y = 0;
 
 /**
@@ -98,39 +95,74 @@ const MODEL_SCALE: Record<string, number> = {
 /* Floor zones                                                                */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Scale factor to convert FBX mm to Three.js units (1 unit = 1 tile).
+ * The hospital FBX models are in mm: a 1000mm wall = 1 tile.
+ */
+const FBX_SCALE = 0.001;
+
+/**
+ * Choose the floor FBX model URL based on zone type.
+ * - Reception/waiting → blue tile floor
+ * - Clinical rooms → beige ward floor
+ * - Hallway → office floor (neutral)
+ */
+function floorModelForZone(zoneId: string): string {
+  switch (zoneId) {
+    case 'waiting_room':
+      return '/models/hospital/floor_reception.fbx';
+    case 'hallway':
+    case 'exit':
+      return '/models/hospital/floor_office.fbx';
+    default:
+      return '/models/hospital/floor_ward.fbx';
+  }
+}
+
+/**
+ * Zone floor tiled with FBX floor models from the Hospital pack.
+ *
+ * Each floor FBX is a 1m×1m (or 2m×2m) tile. We load it once and
+ * clone it across the zone's bounding box.
+ */
 function ZoneFloor({ zone }: { zone: ZoneRegion }) {
-  const textureUrl = ZONE_TEXTURE_URLS[zone.zoneId];
-  const texture = useLoader(TextureLoader, textureUrl);
+  const floorUrl = floorModelForZone(zone.zoneId);
+  const floorModel = useFBXModel(floorUrl);
 
-  // Configure texture for tiling
-  useMemo(() => {
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    const tilesPerRepeat = 4;
-    const repeatX = (zone.bounds.maxX - zone.bounds.minX + 1) / tilesPerRepeat;
-    const repeatY = (zone.bounds.maxY - zone.bounds.minY + 1) / tilesPerRepeat;
-    texture.repeat.set(repeatX, repeatY);
-  }, [texture, zone]);
+  const tileSetLookup = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of zone.tilePositions) s.add(`${t.x},${t.y}`);
+    return s;
+  }, [zone.tilePositions]);
 
-  const width = zone.bounds.maxX - zone.bounds.minX + 1;
-  const depth = zone.bounds.maxY - zone.bounds.minY + 1;
-  const centerX = zone.bounds.minX + width / 2;
-  const centerZ = zone.bounds.minY + depth / 2;
+  if (!floorModel) return null;
+
+  const minX = zone.bounds.minX;
+  const minZ = zone.bounds.minY;
+  const maxX = zone.bounds.maxX + 1;
+  const maxZ = zone.bounds.maxY + 1;
+
+  const tiles: Array<{ x: number; z: number; key: string }> = [];
+  for (let x = minX; x < maxX; x++) {
+    for (let z = minZ; z < maxZ; z++) {
+      if (tileSetLookup.has(`${x},${z}`)) {
+        tiles.push({ x, z, key: `floor-${zone.zoneRegionId}-${x}-${z}` });
+      }
+    }
+  }
 
   return (
-    <mesh
-      position={[centerX, FLOOR_Y, centerZ]}
-      rotation={[-Math.PI / 2, 0, 0]}
-      receiveShadow
-    >
-      <planeGeometry args={[width, depth]} />
-      <meshStandardMaterial
-        map={texture}
-        color={ZONE_COLORS[zone.zoneId] ?? '#CCCCCC'}
-        roughness={0.85}
-        metalness={0.05}
-      />
-    </mesh>
+    <>
+      {tiles.map(({ x, z, key }) => (
+        <primitive
+          key={key}
+          object={floorModel.clone(true)}
+          position={[x + 0.5, FLOOR_Y, z + 0.5]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[FBX_SCALE, FBX_SCALE, FBX_SCALE]}
+        />
+      ))}
+    </>
   );
 }
 
@@ -138,52 +170,63 @@ function ZoneFloor({ zone }: { zone: ZoneRegion }) {
 /* Walls                                                                      */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Walls tiled with FBX wall models from the Hospital pack.
+ *
+ * Each wall_small_ward.fbx is 1000mm = 1 tile wide. For each wall
+ * segment, we tile wall models at 1-tile intervals along its length.
+ * Vertical walls get a 90-degree Y rotation.
+ */
 function Walls({ layout }: { layout: MapLayout }) {
-  // Merge wall segments into BoxGeometry instances.
-  const wallMeshes = useMemo(() => {
-    return layout.walls.map((wall, i) => {
-      const x1 = wall.x1;
-      const z1 = wall.y1;
-      const x2 = wall.x2;
-      const z2 = wall.y2;
+  const wallModel = useFBXModel('/models/hospital/wall_small_ward.fbx');
 
-      let width: number;
-      let depth: number;
-      let cx: number;
-      let cz: number;
+  if (!wallModel) return null;
 
-      if (wall.orientation === 'horizontal') {
-        width = Math.abs(x2 - x1);
-        depth = WALL_THICKNESS;
-        cx = (x1 + x2) / 2;
-        cz = z1;
-      } else {
-        width = WALL_THICKNESS;
-        depth = Math.abs(z2 - z1);
-        cx = x1;
-        cz = (z1 + z2) / 2;
+  const wallPlacements: Array<{
+    key: string;
+    x: number;
+    z: number;
+    rotY: number;
+  }> = [];
+
+  layout.walls.forEach((wall, i) => {
+    if (wall.orientation === 'horizontal') {
+      const z = wall.y1;
+      const startX = Math.min(wall.x1, wall.x2);
+      const endX = Math.max(wall.x1, wall.x2);
+      for (let x = startX; x < endX; x++) {
+        wallPlacements.push({
+          key: `wall-h-${i}-${x}`,
+          x: x + 0.5,
+          z,
+          rotY: 0
+        });
       }
-
-      return { key: i, width, depth, cx, cz };
-    });
-  }, [layout.walls]);
+    } else {
+      const x = wall.x1;
+      const startZ = Math.min(wall.y1, wall.y2);
+      const endZ = Math.max(wall.y1, wall.y2);
+      for (let z = startZ; z < endZ; z++) {
+        wallPlacements.push({
+          key: `wall-v-${i}-${z}`,
+          x,
+          z: z + 0.5,
+          rotY: Math.PI / 2
+        });
+      }
+    }
+  });
 
   return (
     <>
-      {wallMeshes.map(({ key, width, depth, cx, cz }) => (
-        <mesh
+      {wallPlacements.map(({ key, x, z, rotY }) => (
+        <primitive
           key={key}
-          position={[cx, WALL_HEIGHT / 2, cz]}
-          castShadow
-          receiveShadow
-        >
-          <boxGeometry args={[width, WALL_HEIGHT, depth]} />
-          <meshStandardMaterial
-            color="#F0EDE4"
-            roughness={0.7}
-            metalness={0.02}
-          />
-        </mesh>
+          object={wallModel.clone(true)}
+          position={[x, FLOOR_Y, z]}
+          rotation={[-Math.PI / 2, 0, rotY]}
+          scale={[FBX_SCALE, FBX_SCALE, FBX_SCALE]}
+        />
       ))}
     </>
   );

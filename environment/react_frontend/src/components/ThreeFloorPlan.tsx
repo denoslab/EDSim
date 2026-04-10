@@ -89,6 +89,14 @@ const MODEL_SCALE: Record<string, number> = {
   wheelchair: 0.00248
 };
 
+/**
+ * Per-type Y-axis rotation (radians) applied on top of the Z-up→Y-up
+ * correction. Waiting room chairs face right (toward the TV wall).
+ */
+const MODEL_Y_ROTATION: Record<string, number> = {
+  waiting_room_chair: -Math.PI / 2
+};
+
 /* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */
 
 /* -------------------------------------------------------------------------- */
@@ -350,13 +358,14 @@ function FurnitureModel({
 }) {
   const model = useFBXModel(modelUrl);
   const scale = MODEL_SCALE[piece.type] ?? 0.012;
+  const yRot = MODEL_Y_ROTATION[piece.type] ?? 0;
 
   if (!model) return null;
   return (
     <primitive
       object={model}
       position={[piece.tileX + 0.5, FLOOR_Y, piece.tileY + 0.5]}
-      rotation={[-Math.PI / 2, 0, 0]}
+      rotation={[-Math.PI / 2, 0, yRot]}
       scale={[scale, scale, scale]}
     />
   );
@@ -440,47 +449,53 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
 
   return (
     <>
-      {/* Reception desk — near the top edge, centered */}
+      {/* Reception desk — at the very top edge, away from chairs */}
       <Decoration
         url="/models/hospital/reception_desk.fbx"
-        position={[cx, FLOOR_Y, minY + 1.5]}
+        position={[cx, FLOOR_Y, minY + 0.5]}
         scale={s}
       />
       {/* Receptionist chair behind the desk */}
       <Decoration
         url="/models/hospital/chair_reception.fbx"
-        position={[cx + 0.5, FLOOR_Y, minY + 0.8]}
+        position={[cx + 0.5, FLOOR_Y, minY + 0.2]}
         scale={s * 1.5}
       />
       {/* PC Monitor on the desk */}
       <Decoration
         url="/models/hospital/pc_monitor.fbx"
-        position={[cx - 0.5, FLOOR_Y + 0.6, minY + 1.2]}
+        position={[cx - 0.5, FLOOR_Y + 0.6, minY + 0.3]}
         scale={s * 1.2}
       />
       {/* PC Keyboard on the desk */}
       <Decoration
         url="/models/hospital/pc_keyboard.fbx"
-        position={[cx - 0.3, FLOOR_Y + 0.55, minY + 1.6]}
+        position={[cx - 0.3, FLOOR_Y + 0.55, minY + 0.7]}
         scale={s * 1.2}
       />
       {/* Phone on the desk */}
       <Decoration
         url="/models/hospital/phone.fbx"
-        position={[cx + 1, FLOOR_Y + 0.6, minY + 1.3]}
+        position={[cx + 1, FLOOR_Y + 0.6, minY + 0.4]}
         scale={s * 1.2}
       />
-      {/* Magazine table — centre of the waiting area */}
+      {/* Cactus on the desk */}
+      <Decoration
+        url="/models/hospital/cactus.fbx"
+        position={[cx - 2, FLOOR_Y + 0.55, minY + 0.5]}
+        scale={s * 1.2}
+      />
+      {/* Magazine table — between the chair rows, centre of room */}
       <Decoration
         url="/models/hospital/table_magazines.fbx"
-        position={[cx, FLOOR_Y, cz + 1]}
+        position={[cx - 1.5, FLOOR_Y, cz]}
         scale={s * 1.5}
       />
       {/* Second magazine table */}
       {h > 6 ? (
         <Decoration
           url="/models/hospital/table_magazines.fbx"
-          position={[cx - 2, FLOOR_Y, cz + 1]}
+          position={[cx - 1.5, FLOOR_Y, cz + 3]}
           scale={s * 1.5}
         />
       ) : null}
@@ -490,17 +505,11 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
         position={[minX + 0.5, FLOOR_Y, maxY - 0.5]}
         scale={s * 1.5}
       />
-      {/* Small plant — top-right corner */}
+      {/* Small plant — near the desk */}
       <Decoration
         url="/models/hospital/plant_small.fbx"
         position={[maxX - 0.5, FLOOR_Y, minY + 0.5]}
         scale={s * 1.5}
-      />
-      {/* Cactus — near the desk */}
-      <Decoration
-        url="/models/hospital/cactus.fbx"
-        position={[cx - 2, FLOOR_Y + 0.55, minY + 1.4]}
-        scale={s * 1.2}
       />
       {/* Garbage can — near the entrance (bottom edge) */}
       <Decoration
@@ -508,14 +517,14 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
         position={[minX + 1, FLOOR_Y, maxY - 0.5]}
         scale={s * 1.5}
       />
-      {/* TV — on a side wall */}
+      {/* TV — on the right wall, facing the chairs */}
       <Decoration
         url="/models/hospital/tv.fbx"
         position={[maxX - 0.3, FLOOR_Y + 1.2, cz]}
         rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
         scale={s * 1.5}
       />
-      {/* Bookshelf — against a wall */}
+      {/* Bookshelf — against the left wall */}
       <Decoration
         url="/models/hospital/bookshelf.fbx"
         position={[minX + 0.4, FLOOR_Y, cz - 1]}

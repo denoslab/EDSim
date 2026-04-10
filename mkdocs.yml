@@ -1,0 +1,60 @@
+site_name: EDSim Documentation
+site_url: https://denoslab.github.io/EDSim/
+repo_url: https://github.com/denoslab/EDSim
+repo_name: denoslab/EDSim
+site_description: >-
+  Documentation for EDSim, an LLM-powered multi-agent simulation of
+  emergency department workflows.
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - attr_list
+  - toc:
+      permalink: true
+  - tables
+
+nav:
+  - Home: index.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Simulation Engine: architecture/simulation-engine.md
+      - 3D Floor Plan Viewer: architecture/floor-plan-viewer.md
+  - Frontend:
+      - Phase 1 — 3D Viewer: frontend/phase1-viewer.md
+      - Tiled JSON Parser: frontend/parser.md
+      - Three.js Renderer: frontend/threejs-renderer.md
+      - Assets & Models: frontend/assets.md
+  - Development:
+      - Getting Started: development/getting-started.md
+      - Running Tests: development/testing.md
+      - Adding Maps: development/adding-maps.md

@@ -70,6 +70,20 @@ Open [http://localhost:8000/](http://localhost:8000/) to confirm the frontend is
 
 > For interactive mode, custom configuration, or local development, see the sections below.
 
+### Phase 1 Floor Plan Viewer
+
+A new React + Three.js 3D renderer is being built under
+[`environment/react_frontend/`](environment/react_frontend/) (tracking
+[Issue #15](https://github.com/denoslab/EDSim/issues/15)). To preview just
+the floor plan layout from a Tiled map without running the simulation:
+
+```bash
+./run_map_viewer.sh             # opens http://127.0.0.1:5173
+```
+
+See [`environment/react_frontend/README.md`](environment/react_frontend/README.md)
+for the parser architecture, validation criteria, and how to add a new map.
+
 ## Architecture Overview
 
 EDSim consists of three main components:

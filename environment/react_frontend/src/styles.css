@@ -1,0 +1,185 @@
+/*
+ * Global stylesheet for the EDSim React frontend.
+ *
+ * The viewer uses a two-pane layout: a fixed-width sidebar with the map
+ * catalogue and display toggles, and a flexible main pane that hosts the
+ * Three.js canvas. The colour palette is intentionally neutral so the canvas
+ * dominates the viewport.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #1f2933;
+  background: #f7f8fa;
+}
+
+.map-viewer-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.map-viewer-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+}
+
+.map-viewer-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.map-viewer-header .subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #5f6b7a;
+}
+
+.map-viewer-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.map-viewer-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  padding: 20px;
+  background: #ffffff;
+  border-right: 1px solid #e1e4e8;
+  overflow-y: auto;
+}
+
+.map-viewer-sidebar h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5f6b7a;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.map-viewer-sidebar h2:not(:first-of-type) {
+  margin-top: 24px;
+}
+
+.map-list {
+  list-style: none;
+  margin: 0 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.map-list-item {
+  width: 100%;
+  text-align: left;
+  background: #f7f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: inherit;
+}
+
+.map-list-item:hover {
+  background: #eef1f4;
+}
+
+.map-list-item.active {
+  background: #1a4480;
+  border-color: #1a4480;
+  color: #ffffff;
+}
+
+.map-list-item.active .map-description {
+  color: #d3dceb;
+}
+
+.map-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.map-description {
+  font-size: 12px;
+  color: #5f6b7a;
+  line-height: 1.3;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin: 6px 0;
+  cursor: pointer;
+}
+
+.parser-stats dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.parser-stats dt {
+  color: #5f6b7a;
+}
+
+.parser-stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.map-viewer-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #5f6b7a;
+  background: #f7f8fa;
+}
+
+.status.error {
+  flex-direction: column;
+  color: #b71c1c;
+  padding: 24px;
+  text-align: center;
+}
+
+.status.error pre {
+  margin-top: 12px;
+  max-width: 600px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: #5f6b7a;
+}

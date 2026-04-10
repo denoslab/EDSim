@@ -1,0 +1,508 @@
+/**
+ * `ThreeFloorPlan` — full 3D floor plan renderer using Three.js.
+ *
+ * Full 3D floor plan renderer:
+ *  - **Floors**: flat PlaneGeometry per zone, textured with the same
+ *    raster PNGs the 2D renderer uses.
+ *  - **Walls**: extruded BoxGeometry along every wall segment, with a
+ *    white MeshStandardMaterial and real shadow casting.
+ *  - **Furniture**: Kenney `.glb` models loaded via `useGLTF` and
+ *    positioned at each equipment tile.
+ *  - **Lighting**: DirectionalLight (with shadow map) + soft
+ *    AmbientLight for fill.
+ *  - **Camera**: OrbitControls — drag to rotate, scroll to zoom,
+ *    right-drag to pan.
+ *
+ * The component consumes the same {@link MapLayout} data model that the
+ * 2D layers use, so the parser, sidebar, and test infrastructure are
+ * completely unchanged.
+ *
+ * @packageDocumentation
+ */
+
+import { Suspense, useCallback, useMemo, useRef } from 'react';
+import { Canvas, useLoader, useThree } from '@react-three/fiber';
+import { OrbitControls, useGLTF } from '@react-three/drei';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import * as THREE from 'three';
+import { TextureLoader } from 'three';
+import type { MapLayout, EquipmentPlacement, ZoneRegion } from '@/parser/types';
+import { ZONE_TEXTURE_URLS } from '@/assets';
+import { ZONE_COLORS, CANVAS_BACKGROUND_COLOR } from '@/theme/colors';
+
+/** Props for {@link ThreeFloorPlan}. */
+export interface ThreeFloorPlanProps {
+  /** Parsed map layout. */
+  layout: MapLayout;
+  /** Show zone labels. */
+  showZoneLabels?: boolean;
+  /** Show spawning overlay. */
+  showSpawnOverlay?: boolean;
+}
+
+/** Scale: 1 tile = 1 Three.js unit. */
+const WALL_HEIGHT = 2.5;
+const WALL_THICKNESS = 0.25;
+const FLOOR_Y = 0;
+
+/**
+ * Model URL mapping for each equipment type. Loaded from public/models/.
+ */
+const MODEL_URLS: Record<string, string> = {
+  bed: '/models/bed.glb',
+  chair: '/models/chair.glb',
+  waiting_room_chair: '/models/waiting_chair.glb',
+  computer: '/models/computer.glb',
+  diagnostic_table: '/models/diagnostic_table.glb',
+  medical_equipment: '/models/medical_cart.glb',
+  wheelchair: '/models/wheelchair.glb'
+};
+
+/* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */
+
+/* -------------------------------------------------------------------------- */
+/* Floor zones                                                                */
+/* -------------------------------------------------------------------------- */
+
+function ZoneFloor({ zone }: { zone: ZoneRegion }) {
+  const textureUrl = ZONE_TEXTURE_URLS[zone.zoneId];
+  const texture = useLoader(TextureLoader, textureUrl);
+
+  // Configure texture for tiling
+  useMemo(() => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    const tilesPerRepeat = 4;
+    const repeatX = (zone.bounds.maxX - zone.bounds.minX + 1) / tilesPerRepeat;
+    const repeatY = (zone.bounds.maxY - zone.bounds.minY + 1) / tilesPerRepeat;
+    texture.repeat.set(repeatX, repeatY);
+  }, [texture, zone]);
+
+  const width = zone.bounds.maxX - zone.bounds.minX + 1;
+  const depth = zone.bounds.maxY - zone.bounds.minY + 1;
+  const centerX = zone.bounds.minX + width / 2;
+  const centerZ = zone.bounds.minY + depth / 2;
+
+  return (
+    <mesh
+      position={[centerX, FLOOR_Y, centerZ]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      receiveShadow
+    >
+      <planeGeometry args={[width, depth]} />
+      <meshStandardMaterial
+        map={texture}
+        color={ZONE_COLORS[zone.zoneId] ?? '#CCCCCC'}
+        roughness={0.85}
+        metalness={0.05}
+      />
+    </mesh>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Walls                                                                      */
+/* -------------------------------------------------------------------------- */
+
+function Walls({ layout }: { layout: MapLayout }) {
+  // Merge wall segments into BoxGeometry instances.
+  const wallMeshes = useMemo(() => {
+    return layout.walls.map((wall, i) => {
+      const x1 = wall.x1;
+      const z1 = wall.y1;
+      const x2 = wall.x2;
+      const z2 = wall.y2;
+
+      let width: number;
+      let depth: number;
+      let cx: number;
+      let cz: number;
+
+      if (wall.orientation === 'horizontal') {
+        width = Math.abs(x2 - x1);
+        depth = WALL_THICKNESS;
+        cx = (x1 + x2) / 2;
+        cz = z1;
+      } else {
+        width = WALL_THICKNESS;
+        depth = Math.abs(z2 - z1);
+        cx = x1;
+        cz = (z1 + z2) / 2;
+      }
+
+      return { key: i, width, depth, cx, cz };
+    });
+  }, [layout.walls]);
+
+  return (
+    <>
+      {wallMeshes.map(({ key, width, depth, cx, cz }) => (
+        <mesh
+          key={key}
+          position={[cx, WALL_HEIGHT / 2, cz]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[width, WALL_HEIGHT, depth]} />
+          <meshStandardMaterial
+            color="#F0EDE4"
+            roughness={0.7}
+            metalness={0.02}
+          />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ground plane (surrounding area)                                            */
+/* -------------------------------------------------------------------------- */
+
+function GroundPlane({ layout }: { layout: MapLayout }) {
+  const size = Math.max(layout.widthInTiles, layout.heightInTiles) * 3;
+  return (
+    <mesh
+      position={[layout.widthInTiles / 2, -0.05, layout.heightInTiles / 2]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      receiveShadow
+    >
+      <planeGeometry args={[size, size]} />
+      <meshStandardMaterial color="#5A6058" roughness={1} metalness={0} />
+    </mesh>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Furniture                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Inner component that loads a single GLTF model. Only rendered when
+ * the model URL is known (guarded in `Furniture`), so the `useGLTF`
+ * hook is never called conditionally.
+ */
+function FurnitureModel({
+  piece,
+  modelUrl
+}: {
+  piece: EquipmentPlacement;
+  modelUrl: string;
+}) {
+  const { scene } = useGLTF(modelUrl);
+  const clone = useMemo(() => {
+    const c = scene.clone(true);
+    c.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return c;
+  }, [scene]);
+
+  const scale = piece.type === 'bed' ? 1.2 : 0.8;
+  return (
+    <primitive
+      object={clone}
+      position={[piece.tileX + 0.5, FLOOR_Y, piece.tileY + 0.5]}
+      scale={[scale, scale, scale]}
+    />
+  );
+}
+
+function Furniture({ layout }: { layout: MapLayout }) {
+  return (
+    <>
+      {layout.equipment.map((piece) => {
+        const modelUrl = MODEL_URLS[piece.type];
+        if (!modelUrl) return null;
+        return (
+          <FurnitureModel
+            key={piece.equipmentId}
+            piece={piece}
+            modelUrl={modelUrl}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Lighting                                                                   */
+/* -------------------------------------------------------------------------- */
+
+function Lighting({ layout }: { layout: MapLayout }) {
+  const targetRef = useRef<THREE.Object3D>(null);
+  const cx = layout.widthInTiles / 2;
+  const cz = layout.heightInTiles / 2;
+  const mapDiag = Math.max(layout.widthInTiles, layout.heightInTiles);
+
+  return (
+    <>
+      <ambientLight intensity={0.5} color="#E8E4DC" />
+      <directionalLight
+        position={[cx - mapDiag * 0.4, mapDiag * 0.8, cz - mapDiag * 0.4]}
+        intensity={1.2}
+        color="#FFFAF0"
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-left={-mapDiag}
+        shadow-camera-right={mapDiag}
+        shadow-camera-top={mapDiag}
+        shadow-camera-bottom={-mapDiag}
+        shadow-camera-near={0.1}
+        shadow-camera-far={mapDiag * 3}
+        shadow-bias={-0.002}
+      >
+        {targetRef.current && <primitive object={targetRef.current} />}
+      </directionalLight>
+      <object3D ref={targetRef} position={[cx, 0, cz]} />
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Main scene                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function Scene({
+  layout,
+  controlsRef
+}: {
+  layout: MapLayout;
+  controlsRef: React.RefObject<OrbitControlsImpl | null>;
+}) {
+  const cx = layout.widthInTiles / 2;
+  const cz = layout.heightInTiles / 2;
+  const mapDiag = Math.max(layout.widthInTiles, layout.heightInTiles);
+
+  return (
+    <>
+      <Lighting layout={layout} />
+      <GroundPlane layout={layout} />
+      {layout.zones.map((zone) => (
+        <ZoneFloor key={zone.zoneRegionId} zone={zone} />
+      ))}
+      <Walls layout={layout} />
+      <Furniture layout={layout} />
+      <OrbitControls
+        ref={controlsRef as React.RefObject<OrbitControlsImpl>}
+        target={[cx, 0, cz]}
+        maxPolarAngle={Math.PI / 2.2}
+        minDistance={3}
+        maxDistance={mapDiag * 2.5}
+        enableDamping
+        dampingFactor={0.08}
+      />
+    </>
+  );
+}
+
+/**
+ * Helper component rendered inside the Canvas to give the navigation
+ * overlay access to the Three.js camera. Exposes `getCamera` via a
+ * ref callback so the parent HTML overlay can read camera state.
+ */
+function CameraExposer({
+  cameraRef
+}: {
+  cameraRef: React.MutableRefObject<THREE.Camera | null>;
+}) {
+  const { camera } = useThree();
+  cameraRef.current = camera;
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Navigation overlay (Google Maps style)                                     */
+/* -------------------------------------------------------------------------- */
+
+const NAV_BUTTON_STYLE: React.CSSProperties = {
+  width: 40,
+  height: 40,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#FFFFFF',
+  border: '1px solid #D0D0D0',
+  borderRadius: 4,
+  cursor: 'pointer',
+  fontSize: 20,
+  fontWeight: 500,
+  color: '#333',
+  fontFamily: 'system-ui, sans-serif',
+  padding: 0,
+  lineHeight: 1,
+  userSelect: 'none',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+};
+
+interface NavControlsProps {
+  controlsRef: React.RefObject<OrbitControlsImpl | null>;
+  cameraRef: React.MutableRefObject<THREE.Camera | null>;
+  layout: MapLayout;
+}
+
+function NavControls({ controlsRef, cameraRef, layout }: NavControlsProps) {
+  const ZOOM_STEP = 0.8;
+  const ROTATE_STEP = Math.PI / 8;
+
+  const zoom = useCallback(
+    (factor: number) => {
+      const controls = controlsRef.current;
+      const camera = cameraRef.current;
+      if (!controls || !camera) return;
+      const target = controls.target;
+      const dir = camera.position.clone().sub(target);
+      dir.multiplyScalar(factor);
+      camera.position.copy(target.clone().add(dir));
+      controls.update();
+    },
+    [controlsRef, cameraRef]
+  );
+
+  const rotate = useCallback(
+    (angle: number) => {
+      const controls = controlsRef.current;
+      const camera = cameraRef.current;
+      if (!controls || !camera) return;
+      const target = controls.target;
+      const offset = camera.position.clone().sub(target);
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const x = offset.x * cos - offset.z * sin;
+      const z = offset.x * sin + offset.z * cos;
+      camera.position.set(target.x + x, camera.position.y, target.z + z);
+      controls.update();
+    },
+    [controlsRef, cameraRef]
+  );
+
+  const resetCamera = useCallback(() => {
+    const controls = controlsRef.current;
+    const camera = cameraRef.current;
+    if (!controls || !camera) return;
+    const cx = layout.widthInTiles / 2;
+    const cz = layout.heightInTiles / 2;
+    const mapDiag = Math.max(layout.widthInTiles, layout.heightInTiles);
+    camera.position.set(cx + mapDiag * 0.5, mapDiag * 0.7, cz + mapDiag * 0.5);
+    controls.target.set(cx, 0, cz);
+    controls.update();
+  }, [controlsRef, cameraRef, layout]);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        right: 16,
+        top: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        zIndex: 10
+      }}
+      data-testid="nav-controls"
+    >
+      {/* Zoom group */}
+      <button
+        type="button"
+        style={{ ...NAV_BUTTON_STYLE, borderRadius: '4px 4px 0 0' }}
+        onClick={() => zoom(ZOOM_STEP)}
+        title="Zoom in"
+        data-testid="nav-zoom-in"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        style={{ ...NAV_BUTTON_STYLE, borderRadius: '0 0 4px 4px' }}
+        onClick={() => zoom(1 / ZOOM_STEP)}
+        title="Zoom out"
+        data-testid="nav-zoom-out"
+      >
+        −
+      </button>
+
+      <div style={{ height: 8 }} />
+
+      {/* Rotate group */}
+      <button
+        type="button"
+        style={{ ...NAV_BUTTON_STYLE, borderRadius: '4px 4px 0 0' }}
+        onClick={() => rotate(-ROTATE_STEP)}
+        title="Rotate left"
+        data-testid="nav-rotate-left"
+      >
+        ↺
+      </button>
+      <button
+        type="button"
+        style={{ ...NAV_BUTTON_STYLE, borderRadius: '0 0 4px 4px' }}
+        onClick={() => rotate(ROTATE_STEP)}
+        title="Rotate right"
+        data-testid="nav-rotate-right"
+      >
+        ↻
+      </button>
+
+      <div style={{ height: 8 }} />
+
+      {/* Reset */}
+      <button
+        type="button"
+        style={NAV_BUTTON_STYLE}
+        onClick={resetCamera}
+        title="Reset camera"
+        data-testid="nav-reset"
+      >
+        ⌂
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Top-level Three.js floor plan canvas. Drop-in replacement for
+ * Takes the same `MapLayout` the parser produces and renders a real
+ * 3D scene with Google Maps-style navigation controls.
+ */
+export function ThreeFloorPlan({ layout }: ThreeFloorPlanProps) {
+  const mapDiag = Math.max(layout.widthInTiles, layout.heightInTiles);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const cameraRef = useRef<THREE.Camera | null>(null);
+
+  return (
+    <div
+      style={{ width: '100%', height: '100%', background: CANVAS_BACKGROUND_COLOR, position: 'relative' }}
+      data-testid="three-floor-plan"
+    >
+      <Canvas
+        shadows
+        camera={{
+          position: [
+            layout.widthInTiles / 2 + mapDiag * 0.5,
+            mapDiag * 0.7,
+            layout.heightInTiles / 2 + mapDiag * 0.5
+          ],
+          fov: 45,
+          near: 0.1,
+          far: mapDiag * 10
+        }}
+        gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+      >
+        <Suspense fallback={null}>
+          <Scene layout={layout} controlsRef={controlsRef} />
+          <CameraExposer cameraRef={cameraRef} />
+        </Suspense>
+      </Canvas>
+      <NavControls
+        controlsRef={controlsRef}
+        cameraRef={cameraRef}
+        layout={layout}
+      />
+    </div>
+  );
+}

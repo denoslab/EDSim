@@ -521,22 +521,22 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
         position={[cx + 2, FLOOR_Y, cz + 1]}
         scale={s * 1.5}
       />
-      {/* Plant — bottom-left corner */}
+      {/* Plant — bottom-left, pulled 1.5 tiles from walls */}
       <Decoration
         url="/models/hospital/plant.fbx"
-        position={[minX + 0.5, FLOOR_Y, maxY - 0.5]}
-        scale={s * 1.5}
+        position={[minX + 1.5, FLOOR_Y, maxY - 1.5]}
+        scale={s * 1.2}
       />
-      {/* Small plant — near the desk */}
+      {/* Small plant — next to the reception desk */}
       <Decoration
         url="/models/hospital/plant_small.fbx"
-        position={[maxX - 0.5, FLOOR_Y, minY + 0.5]}
-        scale={s * 1.5}
+        position={[cx + 2.5, FLOOR_Y, minY + 1.5]}
+        scale={s * 1.2}
       />
-      {/* Garbage can — near the entrance (bottom edge) */}
+      {/* Garbage can — near the entrance, pulled in from walls */}
       <Decoration
         url="/models/hospital/garbage.fbx"
-        position={[minX + 1, FLOOR_Y, maxY - 0.5]}
+        position={[minX + 1.5, FLOOR_Y, maxY - 2]}
         scale={s * 1.5}
       />
       {/* TV — on the right wall, facing the chairs */}
@@ -546,16 +546,17 @@ function ReceptionDecorations({ layout }: { layout: MapLayout }) {
         rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
         scale={s * 1.5}
       />
-      {/* Bookshelf — against the left wall */}
+      {/* Bookshelf — against the left wall, pulled inward */}
       <Decoration
         url="/models/hospital/bookshelf.fbx"
-        position={[minX + 0.4, FLOOR_Y, cz - 1]}
+        position={[minX + 1.5, FLOOR_Y, cz - 1]}
+        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
         scale={s * 1.5}
       />
       {/* Exit sign above the entrance */}
       <Decoration
         url="/models/hospital/exit_sign.fbx"
-        position={[cx, FLOOR_Y + 1.8, maxY]}
+        position={[cx, FLOOR_Y + 1.8, maxY - 0.5]}
         scale={s * 1.2}
       />
     </>

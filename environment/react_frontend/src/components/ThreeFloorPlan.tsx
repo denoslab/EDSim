@@ -20,12 +20,13 @@
  * @packageDocumentation
  */
 
-import { Suspense, useCallback, useMemo, useRef } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
-import { OrbitControls, useGLTF } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { TextureLoader } from 'three';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { MapLayout, EquipmentPlacement, ZoneRegion } from '@/parser/types';
 import { ZONE_TEXTURE_URLS } from '@/assets';
 import { ZONE_COLORS, CANVAS_BACKGROUND_COLOR } from '@/theme/colors';
@@ -46,16 +47,38 @@ const WALL_THICKNESS = 0.25;
 const FLOOR_Y = 0;
 
 /**
- * Model URL mapping for each equipment type. Loaded from public/models/.
+ * FBX model URL mapping for each equipment type.
+ *
+ * Models are from the Hospital interior asset pack, copied to
+ * `public/models/hospital/`. They share a common texture atlas
+ * (`Texture_Atlas_Colors_2.png`) loaded once and applied to every
+ * model's materials.
  */
 const MODEL_URLS: Record<string, string> = {
-  bed: '/models/bed.glb',
-  chair: '/models/chair.glb',
-  waiting_room_chair: '/models/waiting_chair.glb',
-  computer: '/models/computer.glb',
-  diagnostic_table: '/models/diagnostic_table.glb',
-  medical_equipment: '/models/medical_cart.glb',
-  wheelchair: '/models/wheelchair.glb'
+  bed: '/models/hospital/bed.fbx',
+  chair: '/models/hospital/chair.fbx',
+  waiting_room_chair: '/models/hospital/waiting_chair.fbx',
+  computer: '/models/hospital/computer.fbx',
+  diagnostic_table: '/models/hospital/diagnostic_table.fbx',
+  medical_equipment: '/models/hospital/medical_equipment.fbx',
+  wheelchair: '/models/hospital/wheelchair.fbx'
+};
+
+/** Path to the shared texture atlas used by all hospital FBX models. */
+const TEXTURE_ATLAS_URL = '/models/hospital/Texture_Atlas_Colors_2.png';
+
+/**
+ * Scale factors per equipment type. Hospital FBX models have varied
+ * native sizes; these factors normalise them to roughly 1 tile.
+ */
+const MODEL_SCALE: Record<string, number> = {
+  bed: 0.012,
+  chair: 0.012,
+  waiting_room_chair: 0.012,
+  computer: 0.012,
+  diagnostic_table: 0.012,
+  medical_equipment: 0.012,
+  wheelchair: 0.012
 };
 
 /* ZONE_COLORS and CANVAS_BACKGROUND_COLOR imported from @/theme/colors */
@@ -178,9 +201,91 @@ function GroundPlane({ layout }: { layout: MapLayout }) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Inner component that loads a single GLTF model. Only rendered when
- * the model URL is known (guarded in `Furniture`), so the `useGLTF`
- * hook is never called conditionally.
+ * Load an FBX model, apply the shared hospital texture atlas, clone
+ * it, and configure shadow casting. Uses a module-level cache so each
+ * model URL is loaded only once regardless of how many placements
+ * reference it.
+ */
+const fbxCache = new Map<string, THREE.Group>();
+const textureCache: { atlas: THREE.Texture | null } = { atlas: null };
+
+function useFBXModel(modelUrl: string): THREE.Group | null {
+  const [model, setModel] = useState<THREE.Group | null>(
+    () => fbxCache.get(modelUrl)?.clone(true) ?? null
+  );
+
+  useEffect(() => {
+    if (fbxCache.has(modelUrl)) {
+      setModel(fbxCache.get(modelUrl)!.clone(true));
+      return;
+    }
+
+    const loader = new FBXLoader();
+    const texLoader = new TextureLoader();
+
+    // Load the shared texture atlas once.
+    const loadAtlas = (): Promise<THREE.Texture> => {
+      if (textureCache.atlas) return Promise.resolve(textureCache.atlas);
+      return new Promise((resolve) => {
+        texLoader.load(TEXTURE_ATLAS_URL, (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          textureCache.atlas = tex;
+          resolve(tex);
+        });
+      });
+    };
+
+    // Set the resource path so the FBXLoader can find the shared
+    // texture atlas files (Texture_Atlas_Colors_2.png, etc.)
+    // that the FBX materials reference.
+    loader.setResourcePath('/models/hospital/');
+
+    let cancelled = false;
+    loadAtlas().then((atlas) => {
+      loader.load(
+        modelUrl,
+        (fbx) => {
+          if (cancelled) return;
+          fbx.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+              // Apply the shared texture atlas to meshes that lack a
+              // texture. Keep the original material colour so the
+              // model's vertex colours / face colours show through.
+              // The FBX models use a colour palette atlas. Apply it as
+              // the texture map and keep Phong shading (which these
+              // low-poly models were designed for).
+              const mats = Array.isArray(child.material)
+                ? child.material
+                : [child.material];
+              mats.forEach((m) => {
+                const phong = m as THREE.MeshPhongMaterial;
+                if (!phong.map) phong.map = atlas;
+                phong.side = THREE.DoubleSide;
+                phong.shininess = 20;
+              });
+            }
+          });
+          fbxCache.set(modelUrl, fbx);
+          setModel(fbx.clone(true));
+        },
+        undefined,
+        (err) => {
+          if (!cancelled) console.warn('Failed to load FBX:', modelUrl, err);
+        }
+      );
+    });
+
+    return () => { cancelled = true; };
+  }, [modelUrl]);
+
+  return model;
+}
+
+/**
+ * Renders a single hospital FBX model at the given equipment
+ * placement's tile position.
  */
 function FurnitureModel({
   piece,
@@ -189,28 +294,22 @@ function FurnitureModel({
   piece: EquipmentPlacement;
   modelUrl: string;
 }) {
-  const { scene } = useGLTF(modelUrl);
-  const clone = useMemo(() => {
-    const c = scene.clone(true);
-    c.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-    return c;
-  }, [scene]);
+  const model = useFBXModel(modelUrl);
+  const scale = MODEL_SCALE[piece.type] ?? 0.012;
 
-  const scale = piece.type === 'bed' ? 1.2 : 0.8;
+  if (!model) return null;
   return (
     <primitive
-      object={clone}
+      object={model}
       position={[piece.tileX + 0.5, FLOOR_Y, piece.tileY + 0.5]}
       scale={[scale, scale, scale]}
     />
   );
 }
 
+/**
+ * Renders all furniture placements from the parsed layout.
+ */
 function Furniture({ layout }: { layout: MapLayout }) {
   return (
     <>
@@ -241,10 +340,11 @@ function Lighting({ layout }: { layout: MapLayout }) {
 
   return (
     <>
-      <ambientLight intensity={0.5} color="#E8E4DC" />
+      <ambientLight intensity={1.5} color="#FFFFFF" />
+      <hemisphereLight intensity={0.6} color="#FFFFFF" groundColor="#8C7A5A" />
       <directionalLight
         position={[cx - mapDiag * 0.4, mapDiag * 0.8, cz - mapDiag * 0.4]}
-        intensity={1.2}
+        intensity={1.8}
         color="#FFFAF0"
         castShadow
         shadow-mapSize-width={2048}
@@ -491,7 +591,7 @@ export function ThreeFloorPlan({ layout }: ThreeFloorPlanProps) {
           near: 0.1,
           far: mapDiag * 10
         }}
-        gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+        gl={{ antialias: true, toneMapping: THREE.NoToneMapping }}
       >
         <Suspense fallback={null}>
           <Scene layout={layout} controlsRef={controlsRef} />
